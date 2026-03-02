@@ -86,6 +86,7 @@ All major modularization work is complete. The codebase evolved from monolithic 
 |-------|-------|------|
 | #137 | CCS Cannot Connect to IDE, but Native Claude Works | support |
 | #89 | Add Claude Code CLI flag passthrough for delegation | enhancement |
+| #659 | Comprehensive Vietnamese i18n for dashboard | enhancement |
 
 ### Low Priority / Questions
 

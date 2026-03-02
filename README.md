@@ -67,6 +67,7 @@ The dashboard provides visual management for all account types:
 - **Factory Droid**: Track Droid install location and BYOK settings health
 - **Updates Center**: Track support rollouts (Droid target, CLIProxy provider changes, WebSearch integrations)
 - **Health Monitor**: Real-time status across all profiles
+- **Language Switcher**: Toggle dashboard locale between English and Simplified Chinese
 
 **Analytics Dashboard**
 
@@ -515,6 +516,7 @@ See [Remote Proxy documentation](https://docs.ccs.kaitran.ca/features/remote-pro
 | API Profiles | [docs.ccs.kaitran.ca/providers/api-profiles](https://docs.ccs.kaitran.ca/providers/api-profiles) |
 | Remote Proxy | [docs.ccs.kaitran.ca/features/remote-proxy](https://docs.ccs.kaitran.ca/features/remote-proxy) |
 | Cursor IDE (local guide) | [./docs/cursor-integration.md](./docs/cursor-integration.md) |
+| Dashboard i18n (local guide) | [./docs/i18n-dashboard.md](./docs/i18n-dashboard.md) |
 | CLI Reference | [docs.ccs.kaitran.ca/reference/cli-commands](https://docs.ccs.kaitran.ca/reference/cli-commands) |
 | Architecture | [docs.ccs.kaitran.ca/reference/architecture](https://docs.ccs.kaitran.ca/reference/architecture) |
 | Troubleshooting | [docs.ccs.kaitran.ca/reference/troubleshooting](https://docs.ccs.kaitran.ca/reference/troubleshooting) |

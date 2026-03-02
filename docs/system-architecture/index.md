@@ -1,6 +1,6 @@
 # CCS System Architecture
 
-Last Updated: 2026-02-16
+Last Updated: 2026-03-02
 
 High-level architecture overview for the CCS (Claude Code Switch) system.
 
@@ -14,6 +14,8 @@ The system consists of two main components:
 
 1. **CLI Application** (`src/`) - Node.js TypeScript CLI
 2. **Dashboard UI** (`ui/`) - React web application served by Express
+
+Dashboard localization (i18n) architecture and contributor workflow are documented in [Dashboard i18n Guide](../i18n-dashboard.md).
 
 CCS v7.34 adds Image Analysis Hook for vision model proxying through CLIProxy with automatic injection for all profile types.
 
