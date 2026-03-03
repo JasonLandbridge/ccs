@@ -160,10 +160,10 @@ export async function handleConfigCommand(args: string[]): Promise<void> {
 
   try {
     // Start server
-    const { server, wss } = await startServer({ port, dev: options.dev });
+    const { server, wss, cleanup } = await startServer({ port, dev: options.dev });
 
     // Setup graceful shutdown
-    setupGracefulShutdown(server, wss);
+    setupGracefulShutdown(server, wss, cleanup);
 
     const url = `http://localhost:${port}`;
 

@@ -13,6 +13,7 @@ import { WebSocketServer } from 'ws';
 import { setupWebSocket } from './websocket';
 import { createSessionMiddleware, authMiddleware } from './middleware/auth-middleware';
 import { startAutoSyncWatcher, stopAutoSyncWatcher } from '../cliproxy/sync';
+import { shutdownUsageAggregator } from './usage/aggregator';
 
 export interface ServerOptions {
   port: number;
@@ -107,6 +108,7 @@ export async function startServer(options: ServerOptions): Promise<ServerInstanc
   const cleanup = () => {
     wsCleanup();
     stopAutoSyncWatcher().catch(() => {});
+    shutdownUsageAggregator();
   };
 
   // Start listening

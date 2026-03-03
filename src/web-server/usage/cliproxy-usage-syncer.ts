@@ -145,6 +145,10 @@ export async function syncCliproxyUsage(): Promise<void> {
  * Performs an immediate sync on startup.
  */
 export function startCliproxySync(): void {
+  if (syncIntervalId !== null) {
+    return;
+  }
+
   console.log(info('Starting CLIProxy usage sync (interval: 5 min)'));
 
   // Fire-and-forget initial sync

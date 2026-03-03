@@ -7,13 +7,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import {
-  loadDailyUsageData,
-  loadMonthlyUsageData,
-  loadSessionData,
-  loadAllUsageData,
-  loadHourlyUsageData,
-} from './data-aggregator';
+import { loadAllUsageData } from './data-aggregator';
 import type { DailyUsage, HourlyUsage, MonthlyUsage, SessionUsage } from './types';
 import {
   readDiskCache,
@@ -29,6 +23,7 @@ import {
   loadCachedCliproxyData,
   startCliproxySync,
   stopCliproxySync,
+  syncCliproxyUsage,
 } from './cliproxy-usage-syncer';
 
 // ============================================================================
@@ -268,6 +263,14 @@ let diskCacheInitialized = false;
 // Track if background refresh is in progress
 let isRefreshing = false;
 
+// Coalesced full refresh promise shared across all usage loaders
+let pendingFullRefresh: Promise<{
+  daily: DailyUsage[];
+  hourly: HourlyUsage[];
+  monthly: MonthlyUsage[];
+  session: SessionUsage[];
+}> | null = null;
+
 /**
  * Persist cache to disk when we have enough data to be useful.
  */
@@ -293,6 +296,10 @@ async function refreshFromSource(): Promise<{
   monthly: MonthlyUsage[];
   session: SessionUsage[];
 }> {
+  // Try to sync CLIProxy snapshot before reading it.
+  // Non-fatal: syncer handles unavailability and stale fallback.
+  await syncCliproxyUsage();
+
   // Load default data (from ~/.claude/projects/ or CLAUDE_CONFIG_DIR)
   const defaultData = await loadAllUsageData();
 
@@ -365,10 +372,35 @@ async function refreshFromSource(): Promise<{
   return { daily, hourly, monthly, session };
 }
 
+async function refreshFromSourceCoalesced(force = false): Promise<{
+  daily: DailyUsage[];
+  hourly: HourlyUsage[];
+  monthly: MonthlyUsage[];
+  session: SessionUsage[];
+}> {
+  if (force) {
+    return refreshFromSource();
+  }
+
+  if (pendingFullRefresh) {
+    return pendingFullRefresh;
+  }
+
+  pendingFullRefresh = refreshFromSource().finally(() => {
+    pendingFullRefresh = null;
+  });
+
+  return pendingFullRefresh;
+}
+
 /**
  * Initialize in-memory cache from disk cache (lazy - called on first API request).
  */
 function ensureDiskCacheLoaded(): void {
+  // Start sync when usage APIs are actually accessed.
+  // startCliproxySync() is idempotent.
+  startCliproxySync();
+
   if (diskCacheInitialized) return;
   diskCacheInitialized = true;
 
@@ -445,28 +477,28 @@ async function getCachedData<T>(key: string, ttl: number, loader: () => Promise<
 /** Cached loader for daily usage data */
 export async function getCachedDailyData(): Promise<DailyUsage[]> {
   return getCachedData('daily', CACHE_TTL.daily, async () => {
-    return await loadDailyUsageData();
+    return (await refreshFromSourceCoalesced()).daily;
   });
 }
 
 /** Cached loader for monthly usage data */
 export async function getCachedMonthlyData(): Promise<MonthlyUsage[]> {
   return getCachedData('monthly', CACHE_TTL.monthly, async () => {
-    return await loadMonthlyUsageData();
+    return (await refreshFromSourceCoalesced()).monthly;
   });
 }
 
 /** Cached loader for session data */
 export async function getCachedSessionData(): Promise<SessionUsage[]> {
   return getCachedData('session', CACHE_TTL.session, async () => {
-    return await loadSessionData();
+    return (await refreshFromSourceCoalesced()).session;
   });
 }
 
 /** Cached loader for hourly usage data */
 export async function getCachedHourlyData(): Promise<HourlyUsage[]> {
   return getCachedData('hourly', CACHE_TTL.daily, async () => {
-    return await loadHourlyUsageData();
+    return (await refreshFromSourceCoalesced()).hourly;
   });
 }
 
@@ -475,9 +507,12 @@ export async function getCachedHourlyData(): Promise<HourlyUsage[]> {
  */
 export function clearUsageCache(): void {
   cache.clear();
+  pendingRequests.clear();
+  pendingFullRefresh = null;
   clearDiskCache();
   // Reset so next API call will try to reload from disk/source
   diskCacheInitialized = false;
+  lastFetchTimestamp = null;
 }
 
 /**
@@ -537,7 +572,7 @@ export async function prewarmUsageCache(): Promise<{
       // Background refresh
       if (!isRefreshing) {
         isRefreshing = true;
-        refreshFromSource()
+        refreshFromSourceCoalesced()
           .then(() => console.log(ok('Background refresh complete')))
           .catch((err) => console.error(fail(`Background refresh failed: ${err}`)))
           .finally(() => {
@@ -550,7 +585,7 @@ export async function prewarmUsageCache(): Promise<{
 
     // No usable disk cache - refresh from source (blocking for first startup only)
     console.log(info('No disk cache, loading from source...'));
-    await refreshFromSource();
+    await refreshFromSourceCoalesced();
 
     const elapsed = Date.now() - start;
     console.log(ok(`Usage cache ready (${elapsed}ms)`));
@@ -566,4 +601,14 @@ export async function prewarmUsageCache(): Promise<{
  */
 export function shutdownUsageAggregator(): void {
   stopCliproxySync();
+}
+
+/**
+ * Force refresh usage cache from all sources.
+ * Used by manual refresh endpoint.
+ */
+export async function refreshUsageCache(): Promise<void> {
+  // Ensure periodic sync is running for subsequent updates.
+  startCliproxySync();
+  await refreshFromSourceCoalesced(true);
 }
