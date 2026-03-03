@@ -31,17 +31,12 @@ describe('route-helpers AGY denylist', () => {
 
   it('rejects denylisted AGY models on settings create', () => {
     expect(() =>
-      createSettingsFile(
-        'agy-denied',
-        'http://127.0.0.1:8317/api/provider/agy',
-        'test-token',
-        {
-          model: 'claude-sonnet-4.5',
-          opusModel: 'claude-opus-4.5',
-          sonnetModel: 'claude-sonnet-4.5',
-          haikuModel: 'claude-haiku-4.5',
-        }
-      )
+      createSettingsFile('agy-denied', 'http://127.0.0.1:8317/api/provider/agy', 'test-token', {
+        model: 'claude-sonnet-4.5',
+        opusModel: 'claude-opus-4.5',
+        sonnetModel: 'claude-sonnet-4.5',
+        haikuModel: 'claude-haiku-4.5',
+      })
     ).toThrow(/denylist/i);
   });
 
@@ -73,19 +68,39 @@ describe('route-helpers AGY denylist', () => {
   });
 
   it('canonicalizes legacy iflow model IDs on settings create', () => {
+    createSettingsFile('iflow-profile', 'http://127.0.0.1:8317/api/provider/iflow', 'test-token', {
+      model: 'kimi-k2.5',
+      opusModel: 'iflow-default',
+      sonnetModel: 'deepseek-v3.2-chat',
+      haikuModel: 'glm-4.7',
+    });
+
+    const settingsPath = path.join(tempHome, '.ccs', 'iflow-profile.settings.json');
+    const persisted = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) as {
+      env: Record<string, string>;
+    };
+
+    expect(persisted.env.ANTHROPIC_MODEL).toBe('kimi-k2');
+    expect(persisted.env.ANTHROPIC_DEFAULT_OPUS_MODEL).toBe('qwen3-coder-plus');
+    expect(persisted.env.ANTHROPIC_DEFAULT_SONNET_MODEL).toBe('deepseek-v3.2');
+    expect(persisted.env.ANTHROPIC_DEFAULT_HAIKU_MODEL).toBe('glm-4.6');
+  });
+
+  it('canonicalizes legacy iflow model IDs on settings create with root URL + provider hint', () => {
     createSettingsFile(
-      'iflow-profile',
-      'http://127.0.0.1:8317/api/provider/iflow',
+      'iflow-profile-root',
+      'http://127.0.0.1:8317',
       'test-token',
       {
         model: 'kimi-k2.5',
         opusModel: 'iflow-default',
         sonnetModel: 'deepseek-v3.2-chat',
         haikuModel: 'glm-4.7',
-      }
+      },
+      'iflow'
     );
 
-    const settingsPath = path.join(tempHome, '.ccs', 'iflow-profile.settings.json');
+    const settingsPath = path.join(tempHome, '.ccs', 'iflow-profile-root.settings.json');
     const persisted = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) as {
       env: Record<string, string>;
     };
@@ -122,6 +137,43 @@ describe('route-helpers AGY denylist', () => {
       model: 'kimi-k2.5',
       sonnetModel: 'deepseek-v3.2-chat',
       haikuModel: 'minimax-m2.5',
+    });
+
+    const persisted = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) as {
+      env: Record<string, string>;
+    };
+    expect(persisted.env.ANTHROPIC_MODEL).toBe('kimi-k2');
+    expect(persisted.env.ANTHROPIC_DEFAULT_SONNET_MODEL).toBe('deepseek-v3.2');
+    expect(persisted.env.ANTHROPIC_DEFAULT_HAIKU_MODEL).toBe('qwen3-coder-plus');
+  });
+
+  it('canonicalizes legacy iflow model IDs on settings update with root URL + provider hint', () => {
+    const settingsDir = path.join(tempHome, '.ccs');
+    fs.mkdirSync(settingsDir, { recursive: true });
+    const settingsPath = path.join(settingsDir, 'iflow-root.settings.json');
+    fs.writeFileSync(
+      settingsPath,
+      JSON.stringify(
+        {
+          env: {
+            ANTHROPIC_BASE_URL: 'http://127.0.0.1:8317',
+            ANTHROPIC_AUTH_TOKEN: 'test-token',
+            ANTHROPIC_MODEL: 'qwen3-coder-plus',
+            ANTHROPIC_DEFAULT_OPUS_MODEL: 'qwen3-coder-plus',
+            ANTHROPIC_DEFAULT_SONNET_MODEL: 'qwen3-coder-plus',
+            ANTHROPIC_DEFAULT_HAIKU_MODEL: 'qwen3-coder-plus',
+          },
+        },
+        null,
+        2
+      ) + '\n'
+    );
+
+    updateSettingsFile('iflow-root', {
+      model: 'kimi-k2.5',
+      sonnetModel: 'deepseek-v3.2-chat',
+      haikuModel: 'minimax-m2.5',
+      provider: 'iflow',
     });
 
     const persisted = JSON.parse(fs.readFileSync(settingsPath, 'utf8')) as {

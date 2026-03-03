@@ -40,6 +40,19 @@ function resolveProviderFromBaseUrl(baseUrl: unknown): CLIProxyProvider | null {
   }
 }
 
+function resolveProviderForModelCanonicalization(
+  baseUrl: unknown,
+  providerHint: unknown
+): CLIProxyProvider | null {
+  if (typeof providerHint === 'string' && providerHint.trim().length > 0) {
+    const fromProviderHint = mapExternalProviderName(providerHint);
+    if (fromProviderHint) {
+      return fromProviderHint;
+    }
+  }
+  return resolveProviderFromBaseUrl(baseUrl);
+}
+
 function getDeniedModelReasonForProvider(
   provider: CLIProxyProvider | null,
   values: Array<string | undefined>
@@ -114,12 +127,24 @@ export function createSettingsFile(
 ): string {
   const settingsPath = path.join(getCcsDir(), `${name}.settings.json`);
   const { model, opusModel, sonnetModel, haikuModel } = models;
-  const providerFromBaseUrl = resolveProviderFromBaseUrl(baseUrl);
-  const canonicalModel = canonicalizeModelForProvider(providerFromBaseUrl, model);
-  const canonicalOpusModel = canonicalizeModelForProvider(providerFromBaseUrl, opusModel);
-  const canonicalSonnetModel = canonicalizeModelForProvider(providerFromBaseUrl, sonnetModel);
-  const canonicalHaikuModel = canonicalizeModelForProvider(providerFromBaseUrl, haikuModel);
-  const deniedReason = getDeniedModelReasonForProvider(providerFromBaseUrl, [
+  const providerForModelCanonicalization = resolveProviderForModelCanonicalization(
+    baseUrl,
+    provider
+  );
+  const canonicalModel = canonicalizeModelForProvider(providerForModelCanonicalization, model);
+  const canonicalOpusModel = canonicalizeModelForProvider(
+    providerForModelCanonicalization,
+    opusModel
+  );
+  const canonicalSonnetModel = canonicalizeModelForProvider(
+    providerForModelCanonicalization,
+    sonnetModel
+  );
+  const canonicalHaikuModel = canonicalizeModelForProvider(
+    providerForModelCanonicalization,
+    haikuModel
+  );
+  const deniedReason = getDeniedModelReasonForProvider(providerForModelCanonicalization, [
     canonicalModel,
     canonicalOpusModel,
     canonicalSonnetModel,
@@ -174,8 +199,11 @@ export function updateSettingsFile(
 
   const settings = loadSettings(settingsPath);
   const providerForValidation =
-    resolveProviderFromBaseUrl(updates.baseUrl) ??
-    resolveProviderFromBaseUrl(settings.env?.ANTHROPIC_BASE_URL);
+    resolveProviderForModelCanonicalization(updates.baseUrl, updates.provider) ??
+    resolveProviderForModelCanonicalization(
+      settings.env?.ANTHROPIC_BASE_URL,
+      updates.provider ?? settings.env?.CCS_DROID_PROVIDER
+    );
   const canonicalModel =
     updates.model !== undefined
       ? canonicalizeModelForProvider(providerForValidation, updates.model)

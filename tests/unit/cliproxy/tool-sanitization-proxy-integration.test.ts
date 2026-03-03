@@ -303,6 +303,29 @@ describe('ToolSanitizationProxy Integration', () => {
       }
     });
 
+    it('normalizes legacy iFlow aliases on explicit iflow provider routes', async () => {
+      const proxy = new ToolSanitizationProxy({
+        upstreamBaseUrl: `http://127.0.0.1:${mockUpstreamPort}`,
+      });
+      const port = await proxy.start();
+
+      try {
+        await fetch(`http://127.0.0.1:${port}/api/provider/iflow/v1/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'kimi-k2.5',
+            messages: [{ role: 'user', content: 'test' }],
+          }),
+        });
+
+        expect(lastRequest).not.toBeNull();
+        expect((lastRequest!.body as Record<string, unknown>).model).toBe('kimi-k2');
+      } finally {
+        proxy.stop();
+      }
+    });
+
     it('preserves other tool properties during sanitization', async () => {
       const proxy = new ToolSanitizationProxy({
         upstreamBaseUrl: `http://127.0.0.1:${mockUpstreamPort}`,

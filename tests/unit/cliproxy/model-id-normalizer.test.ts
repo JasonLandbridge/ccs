@@ -52,6 +52,8 @@ describe('model-id-normalizer', () => {
       );
       expect(normalizeModelIdForRouting('claude-sonnet-4.6', null)).toBe('claude-sonnet-4.6');
       expect(normalizeModelIdForRouting('claude-sonnet-4.6', 'agy')).toBe('claude-sonnet-4-6');
+      expect(normalizeModelIdForRouting('kimi-k2.5', 'iflow')).toBe('kimi-k2');
+      expect(normalizeModelIdForRouting('kimi-k2.5(8192)', 'iflow')).toBe('kimi-k2(8192)');
       expect(normalizeModelIdForRouting('claude-sonnet-4-6-thinking', 'claude')).toBe(
         'claude-sonnet-4-6-thinking'
       );

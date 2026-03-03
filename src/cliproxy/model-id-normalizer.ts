@@ -227,9 +227,9 @@ export function normalizeModelIdForRouting(model: string, provider: ProviderLike
   if (isAntigravityProvider(provider)) {
     return normalizeModelIdForProvider(trimmedModel, provider);
   }
-  // Explicit non-AGY provider routes should pass through unchanged.
+  // Explicit provider routes still apply provider-specific canonicalization.
   if (typeof provider === 'string' && provider.trim().length > 0) {
-    return trimmedModel;
+    return normalizeModelIdForProvider(trimmedModel, provider);
   }
   const normalizedThinking = normalizeClaudeDottedThinkingMajorMinor(trimmedModel);
   return normalizeDeprecatedAntigravityModelAliases(normalizedThinking);
