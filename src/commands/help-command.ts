@@ -140,6 +140,7 @@ Run ${color('ccs config', 'command')} for web dashboard`.trim();
       ['ccs ollama', 'Local Ollama (http://localhost:11434)'],
       ['ccs ollama-cloud', 'Ollama Cloud (API key required)'],
       ['', ''], // Spacer
+      ['ccs api create --preset anthropic', 'Anthropic direct API key (sk-ant-...)'],
       ['ccs api create', 'Create custom API profile'],
       ['ccs api remove', 'Remove an API profile'],
       ['ccs api list', 'List all API profiles'],

@@ -116,7 +116,11 @@ export function isConfigured(profileName: string, config: Config): boolean {
     if (!fs.existsSync(expandedPath)) return false;
 
     const settings = loadSettings(expandedPath);
-    return !!(settings.env?.ANTHROPIC_BASE_URL && settings.env?.ANTHROPIC_AUTH_TOKEN);
+    // Proxy mode: BASE_URL + AUTH_TOKEN; Native mode: ANTHROPIC_API_KEY only
+    return !!(
+      (settings.env?.ANTHROPIC_BASE_URL && settings.env?.ANTHROPIC_AUTH_TOKEN) ||
+      settings.env?.ANTHROPIC_API_KEY
+    );
   } catch {
     return false;
   }
