@@ -146,6 +146,7 @@ export function ProfileCreateDialog({
           setTimeout(() => {
             setValue('name', openrouterPreset.defaultProfileName);
             setValue('baseUrl', openrouterPreset.baseUrl);
+            setValue('apiKey', openrouterPreset.apiKeyPlaceholder || '');
           }, 0);
         }
       }
@@ -159,6 +160,7 @@ export function ProfileCreateDialog({
     if (preset) {
       setValue('name', preset.defaultProfileName);
       setValue('baseUrl', preset.baseUrl);
+      setValue('apiKey', preset.apiKeyPlaceholder || '');
       if (preset.defaultModel) {
         setValue('model', preset.defaultModel);
         setValue('opusModel', preset.defaultModel);
@@ -169,6 +171,7 @@ export function ProfileCreateDialog({
       // Custom
       setValue('name', '');
       setValue('baseUrl', '');
+      setValue('apiKey', '');
       setValue('model', '');
     }
   };
@@ -215,8 +218,8 @@ export function ProfileCreateDialog({
     // Use user-provided baseUrl (allows customization of preset URLs)
     const finalData = {
       ...data,
-      // Use provided API key, or empty string if not provided (for optional auth providers)
-      apiKey: data.apiKey || '',
+      // Use provided API key, or preset placeholder, or empty string
+      apiKey: data.apiKey || currentPreset?.apiKeyPlaceholder || '',
     };
     try {
       await createMutation.mutateAsync(finalData);
