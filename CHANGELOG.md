@@ -1,3 +1,52 @@
+## [7.53.0](https://github.com/kaitranntt/ccs/compare/v7.52.2...v7.53.0) (2026-03-11)
+
+### Features
+
+* add API profile lifecycle discover/copy/export/import parity ([02c8174](https://github.com/kaitranntt/ccs/commit/02c81743a09cc54447f953e5b4d4f95ad85f1ad9))
+* **api:** add Anthropic direct API key support ([fedb4d4](https://github.com/kaitranntt/ccs/commit/fedb4d4cde4c9027f95364e66daa77b700a5c470)), closes [#688](https://github.com/kaitranntt/ccs/issues/688)
+* **api:** add llama.cpp support as local model provider ([0ca6428](https://github.com/kaitranntt/ccs/commit/0ca6428554be9057926988ef4af0b95a958ca17e)), closes [#690](https://github.com/kaitranntt/ccs/issues/690)
+* **auth:** add --bare flag and MCP server sync for profiles ([bc9b044](https://github.com/kaitranntt/ccs/commit/bc9b04444e0dbeb3db72b4814ca6694595abf0cd)), closes [#691](https://github.com/kaitranntt/ccs/issues/691) [#692](https://github.com/kaitranntt/ccs/issues/692)
+
+### Bug Fixes
+
+* **api:** complete anthropic direct profile support ([1f29fa0](https://github.com/kaitranntt/ccs/commit/1f29fa0b6ab366e558eadbe050e79e294f2eaa43))
+* **auth:** preserve bare profile behavior across runtime and sync ([8f8684c](https://github.com/kaitranntt/ccs/commit/8f8684ce852f527a019e0a32d94922d15b078633))
+* **ci:** remove LOC count from maintainability gate ([d3ede45](https://github.com/kaitranntt/ccs/commit/d3ede45c9612bb2415d24798fe43d6cba188f142))
+* **ci:** remove maintainability baseline gate blocking releases ([03a0fb2](https://github.com/kaitranntt/ccs/commit/03a0fb27ca8ed41326f306c5364e1228117f72b0))
+* clarify CLIProxy dashboard install lifecycle ([a4b626a](https://github.com/kaitranntt/ccs/commit/a4b626aedef2a0cf690a955bf4abd31c5284047a))
+* **cliproxy:** handle Claude OAuth quota 401 ([7e8f9e8](https://github.com/kaitranntt/ccs/commit/7e8f9e82c113490d95b0a9f9bedf627bc11dc76a))
+* **cliproxy:** poll paste-callback auth urls ([b25b165](https://github.com/kaitranntt/ccs/commit/b25b1653b047c588a95c6f4e47aa3214e0e370aa))
+* **cliproxy:** preserve Claude fallback when quota is unavailable ([6ed95a2](https://github.com/kaitranntt/ccs/commit/6ed95a2a861f1031d0d49cd8d53a2ccd5c4214a6))
+* **cliproxy:** preserve kiro paste-callback start route ([86ca180](https://github.com/kaitranntt/ccs/commit/86ca18003a033be976b787811db16bf38bf82a91))
+* **cliproxy:** sync claude 4.6 selector defaults ([3d183fe](https://github.com/kaitranntt/ccs/commit/3d183fe0e891886bbd51a3c5b30b301e966cce03))
+* **cliproxy:** use management auth-url route in paste callback ([6fcd924](https://github.com/kaitranntt/ccs/commit/6fcd924b1c8743484823b958ff403c4c37379eab))
+* **cliproxy:** use management oauth-callback in paste flow ([fa02702](https://github.com/kaitranntt/ccs/commit/fa027022a8faf886c7f5891ec8cb2d3879c783e8))
+* **codex:** standardize haiku defaults on gpt-5.1-codex-mini ([f4a7d4d](https://github.com/kaitranntt/ccs/commit/f4a7d4dc2c84b094192dba30522c475ced3293d6))
+* complete codex tool sanitization coverage ([4baed01](https://github.com/kaitranntt/ccs/commit/4baed01d4905ecf3fbbfb2f4e8ac7dca34ebf907))
+* **config:** align claude defaults across catalogs ([bea3084](https://github.com/kaitranntt/ccs/commit/bea3084d5e4f7bc691503cffee8a235f94c3b87d))
+* **config:** update claude base models to latest ([09aeec5](https://github.com/kaitranntt/ccs/commit/09aeec57633828f9225591e090d8f442abc9d322))
+* **config:** use correct codex haiku model ID (gpt-5-codex-mini) ([8a9751a](https://github.com/kaitranntt/ccs/commit/8a9751a819e41c527ec413e988b18f48df62332a)), closes [#602](https://github.com/kaitranntt/ccs/issues/602)
+* confirm risky cliproxy installs in dashboard ([aed7beb](https://github.com/kaitranntt/ccs/commit/aed7beb075c2f31263423005c34e690af3463039))
+* **copilot:** surface upstream model limits ([8a5ed65](https://github.com/kaitranntt/ccs/commit/8a5ed656eec08ccaae44ddde72cb0ca954b05875))
+* harden profile lifecycle validation and dashboard UX flows ([d6fc5dd](https://github.com/kaitranntt/ccs/commit/d6fc5dd64c3232e9c95a54b0e433f3e057fd7fa4))
+* **hooks:** handle thinking blocks in image analyzer response parsing ([0060c77](https://github.com/kaitranntt/ccs/commit/0060c77c257a64c57f4c704d2f32af415434022f)), closes [#511](https://github.com/kaitranntt/ccs/issues/511)
+* improve quota diagnostics and oauth refresh handling ([fc3600e](https://github.com/kaitranntt/ccs/commit/fc3600e9228790179c8c51162924187ec994c49a))
+* restart CLIProxy after dashboard version install ([e14df1f](https://github.com/kaitranntt/ccs/commit/e14df1fe05ce1fcbe515f6b1d969132ace91ed24))
+* stop untracked CLIProxy installs safely ([ad01196](https://github.com/kaitranntt/ccs/commit/ad01196964bfdbdd0696cc845f3b3d3901b3be2f))
+* strip unsupported gemini and codex tool fields ([8cfd86f](https://github.com/kaitranntt/ccs/commit/8cfd86f1d18356b6bfef931d24c1745e11e1db62))
+* sync error code docs links ([2be5c5a](https://github.com/kaitranntt/ccs/commit/2be5c5a706bc659491decd66c3f21a8839f35e9c))
+* **ui:** update copilot default claude model ([4d0ded3](https://github.com/kaitranntt/ccs/commit/4d0ded339f12abb4fec1c8596fac07c67581351f))
+* **ui:** use preset apiKeyPlaceholder when creating profiles ([6078de7](https://github.com/kaitranntt/ccs/commit/6078de78f2a7e31ec141a49c057a8b4cb1a6d601))
+
+### Tests
+
+* cover llama.cpp help parity ([9bcb195](https://github.com/kaitranntt/ccs/commit/9bcb195e7c82a85e94e9de39530f185efad60ecd))
+* **hooks:** add image analyzer regression coverage ([5097375](https://github.com/kaitranntt/ccs/commit/50973752bac0eabea57e76e5d0c64b460fd525a7))
+
+### CI
+
+* harden AI review for external PRs ([becfc57](https://github.com/kaitranntt/ccs/commit/becfc573c9a63b7b53153882973aca8be9b3b4cf))
+
 ## [7.52.2](https://github.com/kaitranntt/ccs/compare/v7.52.1...v7.52.2) (2026-03-04)
 
 ### Bug Fixes
