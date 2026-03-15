@@ -59,6 +59,7 @@ function showHelp(): void {
   console.log('Usage: ccs config [command] [options]');
   console.log('');
   console.log('Open web-based configuration dashboard');
+  console.log('Includes a dedicated Claude IDE Extension page for VS Code-compatible hosts.');
   console.log('');
   console.log('Commands:');
   console.log('  auth               Manage dashboard authentication');
@@ -71,6 +72,11 @@ function showHelp(): void {
   console.log('    --disable        Disable image analysis');
   console.log('    --timeout <s>    Set analysis timeout (seconds)');
   console.log('    --set-model <p> <m>  Set model for provider');
+  console.log('');
+  console.log('  Claude IDE Extension');
+  console.log('    Dashboard page   Generate copy-ready setup for VS Code, Cursor, Windsurf');
+  console.log('    Shared settings  Shows preferred ~/.claude/settings.json setup');
+  console.log('    IDE-local JSON   Shows extension-specific environmentVariables snippets');
   console.log('');
   console.log('  thinking           Manage thinking/reasoning settings');
   console.log('    --mode <mode>    Set mode (auto, off, manual)');
@@ -90,6 +96,7 @@ function showHelp(): void {
   console.log('  ccs config --port 3000  Use specific port');
   console.log('  ccs config --dev        Development mode with hot reload');
   console.log('  ccs config auth setup   Configure dashboard login');
+  console.log('  ccs config              Open dashboard, then choose Claude IDE Extension');
   console.log('  ccs config image-analysis          Show image settings');
   console.log('  ccs config image-analysis --enable Enable feature');
   console.log('  ccs config thinking                Show thinking settings');

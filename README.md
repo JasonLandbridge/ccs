@@ -260,6 +260,44 @@ Defaults:
 
 Detailed guide: [`docs/cursor-integration.md`](./docs/cursor-integration.md)
 
+### Claude IDE Extension Setup
+
+CCS now has a native setup flow for the Anthropic Claude extension in VS Code and compatible hosts.
+Use the same resolver in both the CLI and dashboard, so API profiles, CCS auth accounts,
+CLIProxy-backed profiles, Copilot, and default-profile continuity all map to the correct env shape.
+
+Preferred shared-settings path:
+
+```bash
+ccs persist glm
+ccs persist work
+ccs persist default
+```
+
+This writes the resolved setup to `~/.claude/settings.json`, which is the best option when you want
+the Claude CLI and the IDE extension to share one CCS profile.
+
+IDE-local snippet path:
+
+```bash
+ccs env glm --format claude-extension --ide vscode
+ccs env work --format claude-extension --ide cursor
+ccs env default --format claude-extension --ide windsurf
+```
+
+This prints a copy-ready `settings.json` snippet for the installed Claude extension host:
+
+- `vscode` / `cursor`: `claudeCode.environmentVariables` plus `claudeCode.disableLoginPrompt`
+- `windsurf`: `claude-code.environmentVariables`
+
+Account and continuity-aware flows use `CLAUDE_CONFIG_DIR` instead of Anthropic transport env vars.
+CLIProxy and Copilot flows emit the required `ANTHROPIC_*` variables and still depend on their local
+proxy/daemon being reachable.
+
+Dashboard parity:
+- `ccs config` -> `Claude Extension`
+- Select a CCS profile and IDE host to copy either the shared `~/.claude/settings.json` payload or the IDE-local extension snippet
+
 ### Parallel Workflows
 
 Run multiple terminals with different providers:
