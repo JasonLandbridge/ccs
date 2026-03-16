@@ -89,6 +89,67 @@ describe('translateAnthropicRequest', () => {
       { role: 'tool', tool_call_id: 'toolu_1', content: 'done' },
     ]);
   });
+
+  it('uses a distinct fallback prefix for missing tool_use ids', () => {
+    const translated = translateAnthropicRequest({
+      messages: [
+        {
+          role: 'assistant',
+          content: [{ type: 'tool_use', name: 'search', input: { q: 'x' } }],
+        },
+      ],
+    });
+
+    expect(translated.messages[0]?.tool_calls?.[0]?.id).toBe('toolu_ccs_fallback_0_0');
+  });
+
+  it('falls back when tool_result content cannot be serialized', () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+
+    const translated = translateAnthropicRequest({
+      messages: [
+        {
+          role: 'user',
+          content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: circular }],
+        },
+      ],
+    });
+
+    expect(translated.messages).toEqual([
+      {
+        role: 'tool',
+        tool_call_id: 'toolu_1',
+        content: '[unserializable content]',
+      },
+    ]);
+  });
+
+  it('falls back when tool_use input cannot be serialized', () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+
+    const translated = translateAnthropicRequest({
+      messages: [
+        {
+          role: 'assistant',
+          content: [{ type: 'tool_use', name: 'search', input: circular }],
+        },
+      ],
+    });
+
+    expect(translated.messages[0]).toEqual({
+      role: 'assistant',
+      content: '',
+      tool_calls: [
+        {
+          id: 'toolu_ccs_fallback_0_0',
+          type: 'function',
+          function: { name: 'search', arguments: '{}' },
+        },
+      ],
+    });
+  });
 });
 
 describe('createAnthropicProxyResponse', () => {
@@ -165,5 +226,22 @@ describe('createAnthropicProxyResponse', () => {
     expect(body).toContain('event: content_block_start');
     expect(body).toContain('"type":"text_delta"');
     expect(body).toContain('event: message_stop');
+  });
+
+  it('emits Anthropic-style error events when SSE translation fails', async () => {
+    const oversizedChunk = `data: ${'x'.repeat(1024 * 1024 + 32)}`;
+
+    const transformed = await createAnthropicProxyResponse(
+      new Response(oversizedChunk, {
+        status: 200,
+        headers: { 'Content-Type': 'text/event-stream' },
+      })
+    );
+
+    const body = await transformed.text();
+    expect(body).toContain('event: error');
+    expect(body).toContain('"type":"error"');
+    expect(body).toContain('"error":{"type":"api_error"');
+    expect(body).toContain('Failed to translate Cursor SSE response');
   });
 });

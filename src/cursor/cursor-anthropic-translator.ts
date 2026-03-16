@@ -13,11 +13,27 @@ export interface TranslatedAnthropicRequest {
   messages: CursorOpenAIMessage[];
 }
 
+const TOOL_RESULT_SERIALIZATION_FALLBACK = '[unserializable content]';
+const TOOL_USE_ARGUMENTS_FALLBACK = '{}';
+
 function assertObject(value: unknown, label: string): Record<string, unknown> {
   if (typeof value !== 'object' || value === null) {
     throw new Error(`${label} must be an object`);
   }
   return value as Record<string, unknown>;
+}
+
+function safeJsonStringify(value: unknown, fallback: string): string {
+  try {
+    const serialized = JSON.stringify(value);
+    return typeof serialized === 'string' ? serialized : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function createFallbackToolId(messageIndex: number, blockIndex: number): string {
+  return `toolu_ccs_fallback_${messageIndex}_${blockIndex}`;
 }
 
 function flattenTextContent(content: unknown, label: string): string {
@@ -49,7 +65,7 @@ function toToolResultContent(content: unknown, label: string): string {
   if (Array.isArray(content)) {
     return flattenTextContent(content, label);
   }
-  return JSON.stringify(content);
+  return safeJsonStringify(content, TOOL_RESULT_SERIALIZATION_FALLBACK);
 }
 
 function mapThinkingToReasoningEffort(
@@ -125,11 +141,11 @@ export function translateAnthropicRequest(raw: unknown): TranslatedAnthropicRequ
           id:
             typeof parsed.id === 'string' && parsed.id.length > 0
               ? parsed.id
-              : `toolu_${messageIndex}_${blockIndex}`,
+              : createFallbackToolId(messageIndex, blockIndex),
           type: 'function',
           function: {
             name: typeof parsed.name === 'string' ? parsed.name : 'tool',
-            arguments: JSON.stringify(parsed.input ?? {}),
+            arguments: safeJsonStringify(parsed.input ?? {}, TOOL_USE_ARGUMENTS_FALLBACK),
           },
         });
         return;
