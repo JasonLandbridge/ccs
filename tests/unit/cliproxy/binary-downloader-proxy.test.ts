@@ -263,9 +263,9 @@ describe('Binary Downloader Proxy Support', () => {
         expect(getProxyAgent('https://example.com')).toBe(false);
       });
 
-      it('should reject unsupported proxy protocols', () => {
+      it('should keep supporting socks proxy URLs for downloader traffic', () => {
         process.env.https_proxy = 'socks5://proxy:1080';
-        expect(getProxyAgent('https://example.com')).toBe(false);
+        expect(getProxyAgent('https://example.com')).not.toBe(false);
       });
 
       it('should return false for invalid target URL', () => {

@@ -1,7 +1,6 @@
 type ProxyEnv = Record<string, string | undefined>;
 type ProxyResolution = { url?: string; error?: string };
-
-const SUPPORTED_PROXY_PROTOCOLS = new Set(['http:', 'https:']);
+type ProxyResolutionOptions = { allowedProtocols?: string[] };
 
 function getEnvValue(env: ProxyEnv, keys: string[]): string | undefined {
   for (const key of keys) {
@@ -29,7 +28,7 @@ function isIpLikeHost(hostname: string): boolean {
   return /^[\d.:]+$/.test(hostname);
 }
 
-function validateProxyUrl(proxyUrl: string): string {
+function validateProxyUrl(proxyUrl: string, allowedProtocols?: string[]): string {
   let parsedUrl: URL;
   try {
     parsedUrl = new URL(proxyUrl);
@@ -37,7 +36,7 @@ function validateProxyUrl(proxyUrl: string): string {
     throw new Error('Invalid URL');
   }
 
-  if (!SUPPORTED_PROXY_PROTOCOLS.has(parsedUrl.protocol)) {
+  if (allowedProtocols && !allowedProtocols.includes(parsedUrl.protocol)) {
     throw new Error(`Unsupported proxy protocol: ${parsedUrl.protocol}`);
   }
 
@@ -52,7 +51,11 @@ function getProxyKeys(isHttps: boolean): string[] {
   return ['http_proxy', 'HTTP_PROXY', 'all_proxy', 'ALL_PROXY'];
 }
 
-export function getProxyResolution(isHttps: boolean, env: ProxyEnv = process.env): ProxyResolution {
+export function getProxyResolution(
+  isHttps: boolean,
+  env: ProxyEnv = process.env,
+  options: ProxyResolutionOptions = {}
+): ProxyResolution {
   let firstError: string | undefined;
 
   for (const key of getProxyKeys(isHttps)) {
@@ -62,7 +65,7 @@ export function getProxyResolution(isHttps: boolean, env: ProxyEnv = process.env
     }
 
     try {
-      return { url: validateProxyUrl(proxyUrl) };
+      return { url: validateProxyUrl(proxyUrl, options.allowedProtocols) };
     } catch (error) {
       if (!firstError) {
         firstError = error instanceof Error ? error.message : 'Unknown proxy configuration error';
@@ -131,7 +134,7 @@ export function shouldBypassProxy(hostname: string, env: ProxyEnv = process.env)
 
     const canonicalPattern = pattern.startsWith('.')
       ? pattern.slice(1)
-      : pattern.replace(/^\*/, '');
+      : pattern.replace(/^\*\.?/, '');
 
     if (!canonicalPattern) {
       continue;
