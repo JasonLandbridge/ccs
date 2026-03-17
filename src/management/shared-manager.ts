@@ -18,6 +18,50 @@ interface SharedItem {
   type: 'directory' | 'file';
 }
 
+export function normalizePluginMetadataPathString(input: string): string {
+  return input.replace(
+    /([\\/])\.ccs\1instances\1[^\\/]+\1/g,
+    (_match, separator: string) => `${separator}.claude${separator}`
+  );
+}
+
+function normalizePluginMetadataValue(value: unknown): { normalized: unknown; changed: boolean } {
+  if (typeof value === 'string') {
+    const normalized = normalizePluginMetadataPathString(value);
+    return { normalized, changed: normalized !== value };
+  }
+
+  if (Array.isArray(value)) {
+    let changed = false;
+    const normalized = value.map((item) => {
+      const result = normalizePluginMetadataValue(item);
+      changed = changed || result.changed;
+      return result.normalized;
+    });
+    return { normalized, changed };
+  }
+
+  if (value && typeof value === 'object') {
+    let changed = false;
+    const normalized = Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => {
+        const result = normalizePluginMetadataValue(item);
+        changed = changed || result.changed;
+        return [key, result.normalized];
+      })
+    );
+    return { normalized, changed };
+  }
+
+  return { normalized: value, changed: false };
+}
+
+export function normalizePluginMetadataContent(original: string): string {
+  const parsed = JSON.parse(original) as unknown;
+  const result = normalizePluginMetadataValue(parsed);
+  return result.changed ? JSON.stringify(result.normalized, null, 2) : original;
+}
+
 /**
  * SharedManager Class
  */
@@ -210,7 +254,7 @@ class SharedManager {
       }
     }
 
-    this.normalizeSharedPluginMetadataPaths();
+    this.normalizeSharedPluginMetadataPaths(instancePath);
   }
 
   /**
@@ -541,9 +585,9 @@ class SharedManager {
   /**
    * Normalize shared plugin metadata files to canonical ~/.claude/ paths.
    */
-  normalizeSharedPluginMetadataPaths(): void {
-    this.normalizePluginRegistryPaths();
-    this.normalizeMarketplaceRegistryPaths();
+  normalizeSharedPluginMetadataPaths(configDir?: string): void {
+    this.normalizePluginRegistryPaths(configDir);
+    this.normalizeMarketplaceRegistryPaths(configDir);
   }
 
   /**
@@ -553,9 +597,10 @@ class SharedManager {
    * This ensures installed_plugins.json is consistent regardless of
    * which CCS instance installed the plugin.
    */
-  normalizePluginRegistryPaths(): void {
-    this.normalizePluginMetadataFile(
-      path.join(this.claudeDir, 'plugins', 'installed_plugins.json'),
+  normalizePluginRegistryPaths(configDir?: string): void {
+    this.normalizePluginMetadataFiles(
+      'installed_plugins.json',
+      configDir,
       'Normalized plugin registry paths',
       'plugin registry'
     );
@@ -568,12 +613,45 @@ class SharedManager {
    * This ensures known_marketplaces.json is consistent regardless of
    * which CCS instance added the marketplace.
    */
-  normalizeMarketplaceRegistryPaths(): void {
-    this.normalizePluginMetadataFile(
-      path.join(this.claudeDir, 'plugins', 'known_marketplaces.json'),
+  normalizeMarketplaceRegistryPaths(configDir?: string): void {
+    this.normalizePluginMetadataFiles(
+      'known_marketplaces.json',
+      configDir,
       'Normalized marketplace registry paths',
       'marketplace registry'
     );
+  }
+
+  private normalizePluginMetadataFiles(
+    fileName: string,
+    configDir: string | undefined,
+    successMessage: string,
+    warningLabel: string
+  ): void {
+    const seen = new Set<string>();
+
+    for (const registryPath of this.getPluginMetadataFilePaths(fileName, configDir)) {
+      const dedupeKey = this.resolveCanonicalPath(registryPath);
+      if (seen.has(dedupeKey)) {
+        continue;
+      }
+
+      seen.add(dedupeKey);
+      this.normalizePluginMetadataFile(registryPath, successMessage, warningLabel);
+    }
+  }
+
+  private getPluginMetadataFilePaths(fileName: string, configDir?: string): string[] {
+    const pluginDirs = new Set<string>([
+      path.join(this.claudeDir, 'plugins'),
+      path.join(this.sharedDir, 'plugins'),
+    ]);
+
+    if (configDir && path.resolve(configDir) !== path.resolve(this.claudeDir)) {
+      pluginDirs.add(path.join(configDir, 'plugins'));
+    }
+
+    return [...pluginDirs].map((pluginDir) => path.join(pluginDir, fileName));
   }
 
   private normalizePluginMetadataFile(
@@ -587,12 +665,9 @@ class SharedManager {
 
     try {
       const original = fs.readFileSync(registryPath, 'utf8');
-
-      // Pattern: /.ccs/instances/<instance-name>/ -> /.claude/
-      const normalized = original.replace(/\/\.ccs\/instances\/[^/]+\//g, '/.claude/');
+      const normalized = normalizePluginMetadataContent(original);
 
       if (normalized !== original) {
-        JSON.parse(normalized);
         fs.writeFileSync(registryPath, normalized, 'utf8');
         console.log(ok(successMessage));
       }

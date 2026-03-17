@@ -58,9 +58,10 @@ class InstanceManager {
       await this.sharedManager.syncAdvancedContinuityArtifacts(instancePath, contextPolicy);
     });
 
+    this.sharedManager.normalizeSharedPluginMetadataPaths(instancePath);
+
     // Sync MCP servers from global ~/.claude.json (unless bare)
     if (!options.bare) {
-      this.sharedManager.normalizeSharedPluginMetadataPaths();
       this.syncMcpServers(instancePath);
     }
 
