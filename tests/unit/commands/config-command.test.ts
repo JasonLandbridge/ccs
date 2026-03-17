@@ -88,6 +88,17 @@ beforeEach(() => {
   }));
 
   mock.module('../../../src/commands/config-dashboard-host', () => ({
+    normalizeDashboardHost: (host: string | undefined) => {
+      if (!host) {
+        return undefined;
+      }
+
+      if (host.startsWith('[') && host.endsWith(']') && host.includes(':')) {
+        return host.slice(1, -1);
+      }
+
+      return host;
+    },
     isLoopbackHost: (host: string) =>
       ['localhost', '127.0.0.1', '::1', '[::1]'].includes(host.trim().toLowerCase()),
     isWildcardHost: (host: string) => ['0.0.0.0', '::', '[::]'].includes(host.trim().toLowerCase()),
