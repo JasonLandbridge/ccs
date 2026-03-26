@@ -26,6 +26,7 @@ describe('ModelConfigSection presets', () => {
         haikuModel="gpt-5-codex-mini"
         providerModels={[]}
         provider="codex"
+        onExtendedContextToggle={vi.fn()}
         onApplyPreset={onApplyPreset}
         onUpdateEnvValue={vi.fn()}
         onOpenCustomPreset={vi.fn()}
@@ -55,10 +56,11 @@ describe('ModelConfigSection presets', () => {
         savedPresets={[]}
         currentModel="claude-opus-4-6-thinking"
         opusModel="claude-opus-4-6-thinking"
-        sonnetModel="claude-sonnet-4-6"
-        haikuModel="claude-sonnet-4-6"
+        sonnetModel="gemini-3-pro-preview"
+        haikuModel="gemini-3-flash-preview"
         providerModels={[]}
         provider="agy"
+        onExtendedContextToggle={vi.fn()}
         onApplyPreset={vi.fn()}
         onUpdateEnvValue={vi.fn()}
         onOpenCustomPreset={vi.fn()}
@@ -69,5 +71,6 @@ describe('ModelConfigSection presets', () => {
     expect(screen.queryByText('Free Tier')).not.toBeInTheDocument();
     expect(screen.queryByText('Paid Tier')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Claude Opus 4.6 Thinking' })).toBeInTheDocument();
+    expect(screen.getByTestId('extended-context-toggle')).toBeInTheDocument();
   });
 });

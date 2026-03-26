@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
+import { showApiCommandHelp } from '../../../src/commands/api-command/help';
 import { handleHelpCommand } from '../../../src/commands/help-command';
 
 function stripAnsi(input: string): string {
@@ -100,6 +101,43 @@ describe('help command parity', () => {
     ).toBe(true);
     expect(rendered.includes('Not supported for ccs glm')).toBe(true);
     expect(rendered.includes('Current-process TELEGRAM_BOT_TOKEN / DISCORD_BOT_TOKEN also work')).toBe(
+      true
+    );
+  });
+
+  test('root help explains Claude [1m] as an explicit CCS suffix with upstream limits', async () => {
+    const lines: string[] = [];
+    console.log = (...args: unknown[]) => {
+      lines.push(args.map((arg) => String(arg)).join(' '));
+    };
+
+    await handleHelpCommand();
+
+    const rendered = stripAnsi(lines.join('\n'));
+    expect(rendered.includes('Claude models: plain by default, opt-in with --1m or saved [1m]')).toBe(
+      true
+    );
+    expect(rendered.includes('CCS only controls the saved [1m] suffix.')).toBe(true);
+    expect(rendered.includes('return 429 extra-usage errors for long-context requests')).toBe(
+      true
+    );
+  });
+
+  test('api help documents create-time Claude [1m] flags and entitlement warning', async () => {
+    const lines: string[] = [];
+    console.log = (...args: unknown[]) => {
+      lines.push(args.map((arg) => String(arg)).join(' '));
+    };
+
+    await showApiCommandHelp();
+
+    const rendered = stripAnsi(lines.join('\n'));
+    expect(rendered.includes('--1m / --no-1m')).toBe(true);
+    expect(rendered.includes('ccs api create --preset anthropic --1m')).toBe(true);
+    expect(rendered.includes('Plain Claude model IDs stay on standard context by default.')).toBe(
+      true
+    );
+    expect(rendered.includes('some accounts can still return 429 for long-context requests')).toBe(
       true
     );
   });
