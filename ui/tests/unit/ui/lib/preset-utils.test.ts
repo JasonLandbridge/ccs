@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { MODEL_CATALOGS, findCatalogModel } from '@/lib/model-catalogs';
+import {
+  MODEL_CATALOGS,
+  findCatalogModel,
+  getResolvedCatalogModels,
+  resolveCatalogModelId,
+} from '@/lib/model-catalogs';
 import { applyDefaultPreset } from '@/lib/preset-utils';
 
 describe('claude preset utils', () => {
@@ -46,10 +51,44 @@ describe('claude preset utils', () => {
     const geminiCatalog = MODEL_CATALOGS.gemini;
     const latestPro = geminiCatalog.models.find((model) => model.id === 'gemini-3.1-pro-preview');
 
-    expect(latestPro?.name).toBe('Gemini 3.1 Pro');
+    expect(latestPro?.name).toBe('Gemini Pro');
     expect(latestPro?.presetMapping?.default).toBe('gemini-3.1-pro-preview');
     expect(findCatalogModel('gemini', 'gemini-3-pro-preview')?.id).toBe('gemini-3.1-pro-preview');
     expect(findCatalogModel('gemini', 'gemini-3.1-flash-preview')?.id).toBe(
+      'gemini-3-flash-preview'
+    );
+  });
+
+  it('resolves Gemini preview presets to the best live family match', () => {
+    const availableModels = [
+      { id: 'gemini-3.9-pro-preview-customtools', owned_by: 'antigravity' },
+      { id: 'gemini-3.9-pro-preview', owned_by: 'antigravity' },
+      { id: 'gemini-3-9-flash-preview-customtools', owned_by: 'antigravity' },
+      { id: 'gemini-3-9-flash-preview', owned_by: 'antigravity' },
+      { id: 'gemini-3.1-pro-preview', owned_by: 'antigravity' },
+    ];
+
+    expect(resolveCatalogModelId('agy', 'gemini-3.1-pro-preview', availableModels)).toBe(
+      'gemini-3.9-pro-preview'
+    );
+    expect(resolveCatalogModelId('agy', 'gemini-3-flash-preview', availableModels)).toBe(
+      'gemini-3-9-flash-preview'
+    );
+    expect(findCatalogModel('agy', 'gemini-3.9-pro-preview')?.id).toBe('gemini-3.1-pro-preview');
+
+    const resolvedAgyModels = getResolvedCatalogModels(MODEL_CATALOGS.agy, availableModels);
+    expect(resolvedAgyModels.find((model) => model.name === 'Gemini Pro')?.id).toBe(
+      'gemini-3.9-pro-preview'
+    );
+    expect(resolvedAgyModels.find((model) => model.name === 'Gemini Flash')?.id).toBe(
+      'gemini-3-9-flash-preview'
+    );
+  });
+
+  it('does not silently swap Gemini Flash presets to flash-lite', () => {
+    const availableModels = [{ id: 'gemini-3.1-flash-lite-preview', owned_by: 'google' }];
+
+    expect(resolveCatalogModelId('gemini', 'gemini-3-flash-preview', availableModels)).toBe(
       'gemini-3-flash-preview'
     );
   });

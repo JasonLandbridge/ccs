@@ -3,7 +3,7 @@
  * Shared data for Quick Setup Wizard and Provider Editor
  */
 
-import type { ProviderCatalog } from '@/components/cliproxy/provider-model-selector';
+import type { ModelEntry, ProviderCatalog } from '@/components/cliproxy/provider-model-selector';
 import { stripModelConfigurationSuffixes } from '@/lib/extended-context-utils';
 
 const GEMINI_MINOR_VERSION_COMPATIBILITY_IDS = Object.freeze({
@@ -12,6 +12,108 @@ const GEMINI_MINOR_VERSION_COMPATIBILITY_IDS = Object.freeze({
   'gemini-3-flash-preview': 'gemini-3.1-flash-preview',
   'gemini-3.1-flash-preview': 'gemini-3-flash-preview',
 });
+
+const GEMINI_PREVIEW_MODEL_ID_PATTERN =
+  /^gemini-(\d+(?:[.-]\d+)*)-(pro|flash)-preview(-customtools)?$/i;
+
+export type CatalogAvailableModel = {
+  id: string;
+  owned_by: string;
+};
+
+type GeminiPreviewFamily = 'pro' | 'flash';
+
+type GeminiPreviewModelInfo = {
+  normalizedId: string;
+  version: number[];
+  family: GeminiPreviewFamily;
+  customtools: boolean;
+  dottedVersion: boolean;
+};
+
+function normalizeModelId(modelId: string): string {
+  return stripModelConfigurationSuffixes(modelId).toLowerCase();
+}
+
+function parseGeminiPreviewModelId(modelId: string): GeminiPreviewModelInfo | null {
+  const normalizedId = normalizeModelId(modelId);
+  const match = normalizedId.match(GEMINI_PREVIEW_MODEL_ID_PATTERN);
+  if (!match) return null;
+
+  const [, versionString, family, customtoolsSuffix] = match;
+
+  return {
+    normalizedId,
+    version: versionString.split(/[.-]/).map((segment) => Number(segment)),
+    family: family as GeminiPreviewFamily,
+    customtools: Boolean(customtoolsSuffix),
+    dottedVersion: versionString.includes('.'),
+  };
+}
+
+function compareGeminiVersions(a: number[], b: number[]): number {
+  const maxLength = Math.max(a.length, b.length);
+  for (let index = 0; index < maxLength; index += 1) {
+    const left = a[index] ?? 0;
+    const right = b[index] ?? 0;
+    if (left === right) continue;
+    return left > right ? 1 : -1;
+  }
+
+  return 0;
+}
+
+function compareGeminiPreviewCandidates(
+  left: GeminiPreviewModelInfo,
+  right: GeminiPreviewModelInfo,
+  target: GeminiPreviewModelInfo
+): number {
+  if (left.customtools !== right.customtools) {
+    return left.customtools ? 1 : -1;
+  }
+
+  const versionComparison = compareGeminiVersions(left.version, right.version);
+  if (versionComparison !== 0) {
+    return versionComparison > 0 ? -1 : 1;
+  }
+
+  const leftStyleMatch = Number(left.dottedVersion === target.dottedVersion);
+  const rightStyleMatch = Number(right.dottedVersion === target.dottedVersion);
+  if (leftStyleMatch !== rightStyleMatch) {
+    return rightStyleMatch - leftStyleMatch;
+  }
+
+  return left.normalizedId.localeCompare(right.normalizedId);
+}
+
+function findAvailableModelId(
+  availableModels: CatalogAvailableModel[],
+  modelId: string
+): string | undefined {
+  const normalizedModelId = normalizeModelId(modelId);
+  return availableModels.find((model) => normalizeModelId(model.id) === normalizedModelId)?.id;
+}
+
+function resolveGeminiPreviewModelId(
+  modelId: string,
+  availableModels: CatalogAvailableModel[]
+): string | undefined {
+  const targetModel = parseGeminiPreviewModelId(modelId);
+  if (!targetModel || availableModels.length === 0) return undefined;
+
+  const bestMatch = availableModels
+    .map((model) => {
+      const info = parseGeminiPreviewModelId(model.id);
+      if (!info || info.family !== targetModel.family) return null;
+      return { id: model.id, info };
+    })
+    .filter((candidate): candidate is { id: string; info: GeminiPreviewModelInfo } =>
+      Boolean(candidate)
+    )
+    .sort((left, right) => compareGeminiPreviewCandidates(left.info, right.info, targetModel))[0];
+
+  return bestMatch?.id;
+}
 
 /** Model catalog data - mirrors src/cliproxy/model-catalog.ts */
 export const MODEL_CATALOGS: Record<string, ProviderCatalog> = {
@@ -47,8 +149,8 @@ export const MODEL_CATALOGS: Record<string, ProviderCatalog> = {
       },
       {
         id: 'gemini-3.1-pro-preview',
-        name: 'Gemini 3.1 Pro',
-        description: 'Google latest Gemini Pro model via Antigravity',
+        name: 'Gemini Pro',
+        description: 'Resolves to the best advertised Gemini Pro preview via Antigravity',
         extendedContext: true,
         presetMapping: {
           default: 'gemini-3.1-pro-preview',
@@ -60,7 +162,7 @@ export const MODEL_CATALOGS: Record<string, ProviderCatalog> = {
       {
         id: 'gemini-3-flash-preview',
         name: 'Gemini Flash',
-        description: 'Fast Gemini model via Antigravity with 3/3.1 Flash rollout compatibility',
+        description: 'Resolves to the best advertised Gemini Flash preview via Antigravity',
         extendedContext: true,
         presetMapping: {
           default: 'gemini-3-flash-preview',
@@ -78,9 +180,9 @@ export const MODEL_CATALOGS: Record<string, ProviderCatalog> = {
     models: [
       {
         id: 'gemini-3.1-pro-preview',
-        name: 'Gemini 3.1 Pro',
+        name: 'Gemini Pro',
         tier: 'paid',
-        description: 'Latest Gemini Pro model, requires paid Google account',
+        description: 'Uses the best advertised Gemini Pro preview when Google exposes one',
         extendedContext: true,
         presetMapping: {
           default: 'gemini-3.1-pro-preview',
@@ -93,7 +195,7 @@ export const MODEL_CATALOGS: Record<string, ProviderCatalog> = {
         id: 'gemini-3-flash-preview',
         name: 'Gemini Flash',
         tier: 'paid',
-        description: 'Fast Gemini model, requires paid Google account and tracks 3/3.1 Flash IDs',
+        description: 'Uses the best advertised Gemini Flash preview when Google exposes one',
         extendedContext: true,
         presetMapping: {
           default: 'gemini-3-flash-preview',
@@ -566,15 +668,95 @@ export function findCatalogModel(provider: string, modelId: string) {
   const catalog = MODEL_CATALOGS[provider.toLowerCase()];
   if (!catalog) return undefined;
 
-  const normalizedModelId = stripModelConfigurationSuffixes(modelId);
+  const normalizedModelId = normalizeModelId(modelId);
   const compatibilityModelId =
     GEMINI_MINOR_VERSION_COMPATIBILITY_IDS[
       normalizedModelId.toLowerCase() as keyof typeof GEMINI_MINOR_VERSION_COMPATIBILITY_IDS
     ];
 
-  return catalog.models.find(
+  const exactMatch = catalog.models.find(
     (model) => model.id === normalizedModelId || model.id === compatibilityModelId
   );
+  if (exactMatch) return exactMatch;
+
+  const geminiModelInfo = parseGeminiPreviewModelId(normalizedModelId);
+  if (!geminiModelInfo) return undefined;
+
+  return catalog.models
+    .map((model) => ({ model, info: parseGeminiPreviewModelId(model.id) }))
+    .filter(
+      (
+        candidate
+      ): candidate is {
+        model: ModelEntry;
+        info: GeminiPreviewModelInfo;
+      } => Boolean(candidate.info && candidate.info.family === geminiModelInfo.family)
+    )
+    .sort((left, right) => compareGeminiVersions(right.info.version, left.info.version))[0]?.model;
+}
+
+export function resolveCatalogModelId(
+  _provider: string,
+  modelId: string,
+  availableModels: CatalogAvailableModel[] = []
+): string {
+  const normalizedModelId = normalizeModelId(modelId);
+  const liveGeminiModelId = resolveGeminiPreviewModelId(normalizedModelId, availableModels);
+  if (liveGeminiModelId) return liveGeminiModelId;
+
+  const exactLiveModelId = findAvailableModelId(availableModels, normalizedModelId);
+  if (exactLiveModelId) return exactLiveModelId;
+
+  const compatibilityModelId =
+    GEMINI_MINOR_VERSION_COMPATIBILITY_IDS[
+      normalizedModelId as keyof typeof GEMINI_MINOR_VERSION_COMPATIBILITY_IDS
+    ];
+  const compatibleLiveModelId = compatibilityModelId
+    ? findAvailableModelId(availableModels, compatibilityModelId)
+    : undefined;
+
+  return compatibleLiveModelId ?? normalizedModelId;
+}
+
+export function resolvePresetMapping(
+  provider: string,
+  presetMapping: NonNullable<ModelEntry['presetMapping']>,
+  availableModels: CatalogAvailableModel[] = []
+) {
+  return {
+    default: resolveCatalogModelId(provider, presetMapping.default, availableModels),
+    opus: resolveCatalogModelId(provider, presetMapping.opus, availableModels),
+    sonnet: resolveCatalogModelId(provider, presetMapping.sonnet, availableModels),
+    haiku: resolveCatalogModelId(provider, presetMapping.haiku, availableModels),
+  };
+}
+
+export function getResolvedCatalogModels(
+  catalog: ProviderCatalog | undefined,
+  availableModels: CatalogAvailableModel[] = []
+) {
+  if (!catalog) return [];
+
+  const seenModelIds = new Set<string>();
+
+  return catalog.models
+    .map((model) => {
+      const resolvedModelId = resolveCatalogModelId(catalog.provider, model.id, availableModels);
+      const resolvedPresetModelMapping = model.presetMapping
+        ? resolvePresetMapping(catalog.provider, model.presetMapping, availableModels)
+        : undefined;
+
+      return {
+        ...model,
+        id: resolvedModelId,
+        presetMapping: resolvedPresetModelMapping,
+      };
+    })
+    .filter((model) => {
+      if (seenModelIds.has(model.id)) return false;
+      seenModelIds.add(model.id);
+      return true;
+    });
 }
 
 export function supportsExtendedContext(provider: string, modelId: string): boolean {
