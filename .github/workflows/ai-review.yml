@@ -128,7 +128,7 @@ jobs:
     name: Claude Code Review
     needs: prepare
     if: needs.prepare.result == 'success'
-    timeout-minutes: 15
+    timeout-minutes: 18
     runs-on: ${{ fromJSON(needs.prepare.outputs.runs_on) }}
     permissions:
       contents: read
@@ -217,6 +217,28 @@ jobs:
             echo "${DELIMITER}"
           } >> "$GITHUB_OUTPUT"
 
+          # Load subagent prompts (all from base branch for security)
+          SECURITY_PROMPT=$(git show "origin/${BASE_REF}:.github/review-prompts/security.md" 2>/dev/null || echo "")
+          QUALITY_PROMPT=$(git show "origin/${BASE_REF}:.github/review-prompts/quality.md" 2>/dev/null || echo "")
+          CCS_PROMPT=$(git show "origin/${BASE_REF}:.github/review-prompts/ccs-compliance.md" 2>/dev/null || echo "")
+          ADVERSARIAL_PROMPT=$(git show "origin/${BASE_REF}:.github/review-prompts/adversarial.md" 2>/dev/null || echo "")
+
+          echo "security_prompt<<PROMPT_EOF" >> "$GITHUB_OUTPUT"
+          echo "$SECURITY_PROMPT" >> "$GITHUB_OUTPUT"
+          echo "PROMPT_EOF" >> "$GITHUB_OUTPUT"
+
+          echo "quality_prompt<<PROMPT_EOF" >> "$GITHUB_OUTPUT"
+          echo "$QUALITY_PROMPT" >> "$GITHUB_OUTPUT"
+          echo "PROMPT_EOF" >> "$GITHUB_OUTPUT"
+
+          echo "ccs_prompt<<PROMPT_EOF" >> "$GITHUB_OUTPUT"
+          echo "$CCS_PROMPT" >> "$GITHUB_OUTPUT"
+          echo "PROMPT_EOF" >> "$GITHUB_OUTPUT"
+
+          echo "adversarial_prompt<<PROMPT_EOF" >> "$GITHUB_OUTPUT"
+          echo "$ADVERSARIAL_PROMPT" >> "$GITHUB_OUTPUT"
+          echo "PROMPT_EOF" >> "$GITHUB_OUTPUT"
+
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@v1
@@ -242,6 +264,22 @@ jobs:
 
             ${{ steps.review-prompt.outputs.content }}
 
+            <security-review-prompt>
+            ${{ steps.review-prompt.outputs.security_prompt }}
+            </security-review-prompt>
+
+            <quality-review-prompt>
+            ${{ steps.review-prompt.outputs.quality_prompt }}
+            </quality-review-prompt>
+
+            <ccs-compliance-review-prompt>
+            ${{ steps.review-prompt.outputs.ccs_prompt }}
+            </ccs-compliance-review-prompt>
+
+            <adversarial-review-prompt>
+            ${{ steps.review-prompt.outputs.adversarial_prompt }}
+            </adversarial-review-prompt>
+
             ## IMPORTANT: Writing the Review
             After completing your analysis, use the `Write` tool to write the final review markdown to `${{ env.REVIEW_OUTPUT_FILE }}`.
             Do NOT use `Edit` tool — use `Write` tool directly to create the file in one shot.
@@ -261,8 +299,8 @@ jobs:
             --bare
             --model ${{ env.REVIEW_MODEL }}
             --permission-mode bypassPermissions
-            --max-turns 30
-            --allowedTools "Glob,Grep,Read,Write,Bash(gh pr diff *),Bash(gh pr view *),Bash(git diff *),Bash(git log *),Bash(git show *),Bash(cat *),Bash(ls *),Bash(wc *),Bash(head *),Bash(tail *),Bash(find *)"
+            --max-turns 50
+            --allowedTools "Agent,Glob,Grep,Read,Write,Bash(gh pr diff *),Bash(gh pr view *),Bash(git diff *),Bash(git log *),Bash(git show *),Bash(cat *),Bash(ls *),Bash(wc *),Bash(head *),Bash(tail *),Bash(find *)"
 
       # Fallback: if Claude didn't write the review file, extract from execution output
       - name: Extract review from execution output (fallback)
