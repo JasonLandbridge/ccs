@@ -25,6 +25,21 @@ function runCcs(args: string[], env: NodeJS.ProcessEnv): RunResult {
   };
 }
 
+function runCodexAlias(args: string[], env: NodeJS.ProcessEnv): RunResult {
+  const codexEntry = path.join(process.cwd(), 'src', 'bin', 'codex-runtime.ts');
+  const result = spawnSync(process.execPath, [codexEntry, ...args], {
+    encoding: 'utf8',
+    env,
+    timeout: 20000,
+  });
+
+  return {
+    status: result.status,
+    stdout: result.stdout || '',
+    stderr: result.stderr || '',
+  };
+}
+
 function readLoggedCodexCalls(logPath: string): string[][] {
   if (!fs.existsSync(logPath)) {
     return [];
@@ -93,7 +108,7 @@ process.exit(0);
     fs.rmSync(tmpHome, { recursive: true, force: true });
   });
 
-  it('ignores numeric CCS_THINKING env overrides for native Codex default mode', () => {
+  it('does not preflight native Codex default launches when no runtime overrides are needed', () => {
     if (process.platform === 'win32') return;
 
     const result = runCcs(['default', '--target', 'codex', 'fix failing tests'], {
@@ -108,7 +123,7 @@ process.exit(0);
 
     expect(result.status).toBe(0);
     const calls = readLoggedCodexCalls(codexArgsLogPath);
-    expect(calls.at(-1)).toEqual(['fix failing tests']);
+    expect(calls).toEqual([['fix failing tests']]);
   });
 
   it('ignores off-style CCS_THINKING env overrides for native Codex default mode', () => {
@@ -126,7 +141,25 @@ process.exit(0);
 
     expect(result.status).toBe(0);
     const calls = readLoggedCodexCalls(codexArgsLogPath);
-    expect(calls.at(-1)).toEqual(['fix failing tests']);
+    expect(calls).toEqual([['fix failing tests']]);
+  });
+
+  it('passes ccsx --version straight through to the native Codex binary', () => {
+    if (process.platform === 'win32') return;
+
+    const result = runCodexAlias(['--version'], {
+      ...process.env,
+      CI: '1',
+      NO_COLOR: '1',
+      CCS_HOME: tmpHome,
+      CCS_CODEX_PATH: fakeCodexPath,
+      CCS_TEST_CODEX_ARGS_OUT: codexArgsLogPath,
+      CCS_TEST_CODEX_VERSION: 'codex-cli 9.9.9-test',
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('codex-cli 9.9.9-test');
+    expect(readLoggedCodexCalls(codexArgsLogPath)).toEqual([['--version']]);
   });
 
   it('fails fast when native Codex reasoning overrides need unsupported --config support', () => {
@@ -145,7 +178,7 @@ process.exit(0);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('does not advertise --config overrides');
     const calls = readLoggedCodexCalls(codexArgsLogPath);
-    expect(calls).toEqual([['--version'], ['--help']]);
+    expect(calls).toEqual([['--help']]);
   });
 
   it('reports unsupported generic settings profiles before Codex install guidance', () => {

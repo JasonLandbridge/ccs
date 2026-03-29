@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import type { ProfileType } from '../types/profile';
 import { runCleanup } from '../errors';
 import { wireChildProcessSignals } from '../utils/signal-forwarder';
-import { escapeShellArg, stripAnthropicEnv } from '../utils/shell-executor';
+import { escapeShellArg, stripAnthropicEnv, stripCodexSessionEnv } from '../utils/shell-executor';
 import type {
   TargetAdapter,
   TargetBinaryInfo,
@@ -76,7 +76,7 @@ export class CodexAdapter implements TargetAdapter {
   readonly displayName = 'Codex CLI';
 
   detectBinary(): TargetBinaryInfo | null {
-    return getCodexBinaryInfo();
+    return getCodexBinaryInfo({ includeVersion: false, includeFeatures: false });
   }
 
   async prepareCredentials(_creds: TargetCredentials): Promise<void> {
@@ -148,7 +148,9 @@ export class CodexAdapter implements TargetAdapter {
   }
 
   buildEnv(creds: TargetCredentials, profileType: ProfileType): NodeJS.ProcessEnv {
-    const env: NodeJS.ProcessEnv = { ...stripAnthropicEnv(process.env) };
+    const env: NodeJS.ProcessEnv = {
+      ...stripCodexSessionEnv(stripAnthropicEnv(process.env)),
+    };
     delete env[CODEX_RUNTIME_ENV_KEY];
     if (profileType !== 'default') {
       if (!creds.apiKey?.trim()) {
