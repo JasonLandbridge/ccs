@@ -1,3 +1,42 @@
+## [7.63.0](https://github.com/kaitranntt/ccs/compare/v7.62.2...v7.63.0) (2026-03-30)
+
+### Features
+
+* add codex dashboard parity ([8c5da9f](https://github.com/kaitranntt/ccs/commit/8c5da9f9e878196356e33a799b921b67e3396252))
+* **codex-ui:** surface cliproxy setup guidance ([0ffde4f](https://github.com/kaitranntt/ccs/commit/0ffde4f3a2688ea1864fab3c94d3d020d4b33a93))
+* **codex:** add ccsxp runtime shortcut ([deb1e9d](https://github.com/kaitranntt/ccs/commit/deb1e9d71eaa226494ec2f60a52cab20b4b0a546))
+* **codex:** add dashboard control center ([b47aa0d](https://github.com/kaitranntt/ccs/commit/b47aa0d28d55260e0db6d0e12791ea4a57fcd54b))
+* **codex:** harden runtime targeting and dashboard editing ([9e43bee](https://github.com/kaitranntt/ccs/commit/9e43beec40608f178e502d1751723465189528a9))
+* **profiles:** expose codex runtime across surfaces ([f9c1238](https://github.com/kaitranntt/ccs/commit/f9c1238483b0c91d701547c9ad330261a2b51fbb)), closes [#773](https://github.com/kaitranntt/ccs/issues/773)
+* **targets:** add native codex runtime target ([8f60820](https://github.com/kaitranntt/ccs/commit/8f60820f3358d878e0f4b9cd448b00690d9b4406)), closes [#773](https://github.com/kaitranntt/ccs/issues/773)
+
+### Bug Fixes
+
+* **ai-review:** increase max-turns to 40 and add hotfix commitlint type ([04c4d61](https://github.com/kaitranntt/ccs/commit/04c4d61018ec7b108d8b93d0d11a549a0cd52c71))
+* **ai-review:** revert to single-job review with enhanced prompt ([f98530b](https://github.com/kaitranntt/ccs/commit/f98530bc73866f57cd0ba4b51d0515eda707e039))
+* **cliproxy:** narrow legacy gemini alias cleanup ([c4428e4](https://github.com/kaitranntt/ccs/commit/c4428e4176bb7244d597b5f75240aa39bf536bbf))
+* **cliproxy:** preserve manual high-minor alias clusters ([6707b7d](https://github.com/kaitranntt/ccs/commit/6707b7d5b470375c3068950894fb7b96b8fa4bf4))
+* **cliproxy:** prune stale control panel alias clusters ([061cd96](https://github.com/kaitranntt/ccs/commit/061cd9679fc56a8a0711877f57eebcd998df10b6))
+* **codex:** align cliproxy guidance with runtime behavior ([bd1ff02](https://github.com/kaitranntt/ccs/commit/bd1ff02521ac75d6e06b336bc9030da084d6a8df))
+* **codex:** align runtime compatibility and dashboard types ([3c52b1a](https://github.com/kaitranntt/ccs/commit/3c52b1ab6d0ef8fccff14113c40c287320d5b547))
+* **codex:** harden dashboard config editing ([ebc9acf](https://github.com/kaitranntt/ccs/commit/ebc9acf8e41fccc9ae968d40be75f1f7e4382929))
+* **codex:** harden native alias launches ([f47ab48](https://github.com/kaitranntt/ccs/commit/f47ab484f3d8abd12a6d771a21beb9d50403a014))
+* **codex:** restore version context for override failures ([643bd2a](https://github.com/kaitranntt/ccs/commit/643bd2a5ac10e63c7ca4e0e91a856145f1935455))
+
+### Documentation
+
+* **codex:** clarify ccsxp and cliproxy setup ([318b57b](https://github.com/kaitranntt/ccs/commit/318b57bedc12f5c3602916418b8ce08bb46d4218))
+* **codex:** document control center behavior ([ca98184](https://github.com/kaitranntt/ccs/commit/ca981847b2ee889b350c78c0e691aec56cd7787d))
+* **codex:** document runtime target support ([da4bb29](https://github.com/kaitranntt/ccs/commit/da4bb29fd71434f2e9179a34c37257c2c5e9df30)), closes [#773](https://github.com/kaitranntt/ccs/issues/773)
+
+### Styles
+
+* **codex:** use monochrome sidebar icon ([09b7f66](https://github.com/kaitranntt/ccs/commit/09b7f66c0b69b31d2662f102fe2fb2f928cb24cd))
+
+### Tests
+
+* **codex:** cover alias passthrough gaps ([c0f0f17](https://github.com/kaitranntt/ccs/commit/c0f0f173e07124c0875940e0d430dacadf38704c))
+
 ## [7.62.2](https://github.com/kaitranntt/ccs/compare/v7.62.1...v7.62.2) (2026-03-29)
 
 ### Bug Fixes
