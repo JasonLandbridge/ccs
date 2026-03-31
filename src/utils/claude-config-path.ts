@@ -25,6 +25,11 @@ export function getClaudeConfigDir(): string {
   return getDefaultClaudeConfigDir();
 }
 
+/** Resolve user-scope Claude JSON config path (~/.claude.json). */
+export function getClaudeUserConfigPath(): string {
+  return path.join(getCcsHome(), '.claude.json');
+}
+
 /** Resolve Claude settings.json path. */
 export function getClaudeSettingsPath(): string {
   return path.join(getClaudeConfigDir(), 'settings.json');

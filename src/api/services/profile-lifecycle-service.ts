@@ -10,7 +10,7 @@ import type { Config, Settings } from '../../types';
 import type { TargetType } from '../../targets/target-adapter';
 import { getPersistedTargetChoices, isPersistedTargetType } from '../../targets/target-metadata';
 import { getCcsDir, getConfigPath, loadConfigSafe } from '../../utils/config-manager';
-import { ensureProfileHooksOrThrow } from '../../utils/websearch/profile-hook-injector';
+import { ensureWebSearchMcpOrThrow } from '../../utils/websearch-manager';
 import { isSensitiveKey } from '../../utils/sensitive-keys';
 import { isReservedName } from '../../config/reserved-names';
 import { isUnifiedMode, mutateUnifiedConfig } from '../../config/unified-config-loader';
@@ -218,7 +218,7 @@ export function registerApiProfileOrphans(options?: {
 
     try {
       if (orphan.validation.valid) {
-        ensureProfileHooksOrThrow(orphan.name);
+        ensureWebSearchMcpOrThrow();
       }
       registerApiProfileInConfig(orphan.name, options?.target || 'claude', options?.force || false);
       result.registered.push(orphan.name);
@@ -268,7 +268,7 @@ export function copyApiProfile(
 
     writeJsonObjectAtomically(destinationSettingsPath, sourceSettings);
     try {
-      ensureProfileHooksOrThrow(destination);
+      ensureWebSearchMcpOrThrow();
     } catch (hookError) {
       rollbackSettingsFile(destinationSettingsPath, previousDestinationContent, destinationExisted);
       throw hookError;
@@ -393,7 +393,7 @@ export function importApiProfileBundle(
 
     writeJsonObjectAtomically(settingsPath, settings);
     try {
-      ensureProfileHooksOrThrow(name);
+      ensureWebSearchMcpOrThrow();
     } catch (hookError) {
       rollbackSettingsFile(settingsPath, previousSettingsContent, settingsExisted);
       throw hookError;

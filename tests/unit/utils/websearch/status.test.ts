@@ -1,5 +1,16 @@
-import { describe, expect, it } from 'bun:test';
-import { buildWebSearchReadiness } from '../../../../src/utils/websearch/status';
+import { describe, expect, it, spyOn } from 'bun:test';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import * as geminiCli from '../../../../src/utils/websearch/gemini-cli';
+import * as grokCli from '../../../../src/utils/websearch/grok-cli';
+import * as opencodeCli from '../../../../src/utils/websearch/opencode-cli';
+import * as providerSecrets from '../../../../src/utils/websearch/provider-secrets';
+import * as unifiedConfigLoader from '../../../../src/config/unified-config-loader';
+import {
+  buildWebSearchReadiness,
+  getWebSearchCliProviders,
+} from '../../../../src/utils/websearch/status';
 import type { WebSearchCliInfo } from '../../../../src/utils/websearch/types';
 
 function provider(overrides: Partial<WebSearchCliInfo> & Pick<WebSearchCliInfo, 'id' | 'name'>): WebSearchCliInfo {
@@ -80,5 +91,104 @@ describe('websearch readiness', () => {
 
     expect(readiness.readiness).toBe('ready');
     expect(readiness.message).toContain('Exa');
+  });
+
+  it('treats cooled-down providers as temporarily unavailable in readiness status', () => {
+    const tempHome = mkdtempSync(join(tmpdir(), 'websearch-status-cooldown-'));
+    const statePath = join(tempHome, '.ccs', 'cache', 'websearch-provider-state.json');
+    const originalCcsHome = process.env.CCS_HOME;
+
+    mkdirSync(join(tempHome, '.ccs', 'cache'), { recursive: true });
+    writeFileSync(
+      statePath,
+      JSON.stringify(
+        {
+          cooldowns: {
+            exa: {
+              until: Date.now() + 10 * 60 * 1000,
+              reason: 'quota_exhausted',
+            },
+          },
+        },
+        null,
+        2
+      ),
+      'utf8'
+    );
+    process.env.CCS_HOME = tempHome;
+
+    const getConfigSpy = spyOn(unifiedConfigLoader, 'getWebSearchConfig').mockReturnValue({
+      enabled: true,
+      providers: {
+        exa: { enabled: true, max_results: 5 },
+        tavily: { enabled: false, max_results: 5 },
+        duckduckgo: { enabled: false, max_results: 5 },
+        brave: { enabled: false, max_results: 5 },
+        gemini: { enabled: false },
+        grok: { enabled: false },
+        opencode: { enabled: false },
+      },
+    } as any);
+    const apiKeySpy = spyOn(providerSecrets, 'getWebSearchApiKeyStates').mockReturnValue({
+      exa: {
+        envVar: 'EXA_API_KEY',
+        configured: true,
+        available: true,
+        source: 'process_env',
+      },
+      tavily: {
+        envVar: 'TAVILY_API_KEY',
+        configured: false,
+        available: false,
+        source: 'none',
+      },
+      brave: {
+        envVar: 'BRAVE_API_KEY',
+        configured: false,
+        available: false,
+        source: 'none',
+      },
+    });
+    const geminiStatusSpy = spyOn(geminiCli, 'getGeminiCliStatus').mockReturnValue({
+      installed: false,
+      version: null,
+    } as any);
+    const geminiAuthSpy = spyOn(geminiCli, 'isGeminiAuthenticated').mockReturnValue(false);
+    const grokStatusSpy = spyOn(grokCli, 'getGrokCliStatus').mockReturnValue({
+      installed: false,
+      version: null,
+    } as any);
+    const opencodeStatusSpy = spyOn(opencodeCli, 'getOpenCodeCliStatus').mockReturnValue({
+      installed: false,
+      version: null,
+    } as any);
+
+    try {
+      const providers = getWebSearchCliProviders();
+      const exa = providers.find((provider) => provider.id === 'exa');
+
+      expect(exa?.enabled).toBe(true);
+      expect(exa?.available).toBe(false);
+      expect(exa?.detail).toContain('Cooling down');
+      expect(exa?.detail).toContain('quota exhaustion');
+
+      const readiness = buildWebSearchReadiness(true, providers);
+      expect(readiness.readiness).toBe('needs_setup');
+      expect(readiness.message).toContain('Cooling down');
+    } finally {
+      getConfigSpy.mockRestore();
+      apiKeySpy.mockRestore();
+      geminiStatusSpy.mockRestore();
+      geminiAuthSpy.mockRestore();
+      grokStatusSpy.mockRestore();
+      opencodeStatusSpy.mockRestore();
+
+      if (originalCcsHome === undefined) {
+        delete process.env.CCS_HOME;
+      } else {
+        process.env.CCS_HOME = originalCcsHome;
+      }
+      rmSync(tempHome, { recursive: true, force: true });
+    }
   });
 });

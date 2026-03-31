@@ -8,7 +8,7 @@ import { getCcsDir, getConfigPath, loadConfigSafe } from '../../utils/config-man
 import { expandPath } from '../../utils/helpers';
 import { validateApiName } from './validation-service';
 import { mutateUnifiedConfig, isUnifiedMode } from '../../config/unified-config-loader';
-import { ensureProfileHooksOrThrow } from '../../utils/websearch/profile-hook-injector';
+import { ensureWebSearchMcpOrThrow } from '../../utils/websearch-manager';
 import type { TargetType } from '../../targets/target-adapter';
 import { resolveDroidProvider } from '../../targets/droid-provider';
 import { isReservedName } from '../../config/reserved-names';
@@ -126,8 +126,7 @@ function createSettingsFile(
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf8');
 
   try {
-    // Inject WebSearch hooks into profile settings
-    ensureProfileHooksOrThrow(name);
+    ensureWebSearchMcpOrThrow();
   } catch (error) {
     rollbackSettingsFile(settingsPath, previousSettingsContent, settingsExisted);
     throw error;
@@ -216,8 +215,7 @@ function createApiProfileUnified(
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n', 'utf8');
 
   try {
-    // Inject WebSearch hooks into profile settings
-    ensureProfileHooksOrThrow(name);
+    ensureWebSearchMcpOrThrow();
   } catch (error) {
     rollbackSettingsFile(settingsPath, previousSettingsContent, settingsExisted);
     throw error;

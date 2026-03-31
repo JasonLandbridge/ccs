@@ -4,6 +4,8 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
+const STEERING_PROMPT_SNIPPET = 'prefer the CCS MCP tool WebSearch instead of Bash/curl/http fetches';
+
 interface RunResult {
   status: number | null;
   stdout: string;
@@ -23,6 +25,15 @@ function runCcs(args: string[], env: NodeJS.ProcessEnv): RunResult {
     stdout: result.stdout || '',
     stderr: result.stderr || '',
   };
+}
+
+function readTraceEvents(tracePath: string): Array<Record<string, unknown>> {
+  return fs
+    .readFileSync(tracePath, 'utf8')
+    .trim()
+    .split('\n')
+    .filter((line) => line.length > 0)
+    .map((line) => JSON.parse(line) as Record<string, unknown>);
 }
 
 describe('settings profile WebSearch launch', () => {
@@ -92,7 +103,7 @@ exit 0
     fs.rmSync(tmpHome, { recursive: true, force: true });
   });
 
-  it('fails before Claude launch when an enabled WebSearch hook cannot be prepared', () => {
+  it('fails before Claude launch when the local WebSearch tool runtime cannot be prepared', () => {
     if (process.platform === 'win32') return;
 
     fs.writeFileSync(path.join(ccsDir, 'hooks'), 'not-a-directory', 'utf8');
@@ -100,7 +111,19 @@ exit 0
     const result = runCcs(['glm', 'smoke'], baseEnv);
 
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain('could not prepare the profile hook for "glm"');
+    expect(result.stderr).toContain('could not prepare the local WebSearch tool');
+    expect(fs.existsSync(claudeArgsLogPath)).toBe(false);
+  });
+
+  it('fails before delegated headless launch when the local WebSearch tool runtime cannot be prepared', () => {
+    if (process.platform === 'win32') return;
+
+    fs.writeFileSync(path.join(ccsDir, 'hooks'), 'not-a-directory', 'utf8');
+
+    const result = runCcs(['glm', '-p', 'smoke'], baseEnv);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('could not prepare the local WebSearch tool');
     expect(fs.existsSync(claudeArgsLogPath)).toBe(false);
   });
 
@@ -117,7 +140,42 @@ exit 0
     const result = runCcs(['glm', 'smoke'], baseEnv);
 
     expect(result.status).toBe(0);
-    expect(result.stderr).not.toContain('could not prepare the profile hook for "glm"');
+    expect(result.stderr).not.toContain('could not prepare the local WebSearch tool');
     expect(fs.existsSync(claudeArgsLogPath)).toBe(true);
+    const launchedArgs = fs.readFileSync(claudeArgsLogPath, 'utf8');
+    expect(launchedArgs).toContain('--disallowedTools');
+    expect(launchedArgs).toContain('WebSearch');
+    expect(launchedArgs).toContain('--append-system-prompt');
+    expect(launchedArgs).toContain(STEERING_PROMPT_SNIPPET);
+  });
+
+  it('writes a source-side launch trace for settings profiles when tracing is enabled', () => {
+    if (process.platform === 'win32') return;
+
+    const tracePath = path.join(ccsDir, 'logs', 'websearch-trace.jsonl');
+    const result = runCcs(['glm', 'smoke'], {
+      ...baseEnv,
+      CCS_WEBSEARCH_TRACE: '1',
+    });
+
+    expect(result.status).toBe(0);
+    expect(fs.existsSync(tracePath)).toBe(true);
+
+    const traceEvents = readTraceEvents(tracePath);
+    const launchEvent = traceEvents.find(
+      (event) => event.event === 'ccs_websearch_launch'
+    ) as
+      | {
+          launcher?: string;
+          nativeWebSearchDisallowed?: boolean;
+          steeringPromptApplied?: boolean;
+          settingsPath?: string;
+        }
+      | undefined;
+
+    expect(launchEvent?.launcher).toBe('ccs.settings-profile');
+    expect(launchEvent?.nativeWebSearchDisallowed).toBe(true);
+    expect(launchEvent?.steeringPromptApplied).toBe(true);
+    expect(launchEvent?.settingsPath).toBe(settingsPath);
   });
 });

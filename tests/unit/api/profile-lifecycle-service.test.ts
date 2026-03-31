@@ -128,7 +128,7 @@ describe('profile lifecycle service', () => {
     expect(result.skipped).toEqual([]);
   });
 
-  it('does not register orphan profiles when WebSearch hook setup fails', async () => {
+  it('does not register orphan profiles when local WebSearch tool setup fails', async () => {
     const ccsDir = path.join(tempHome, '.ccs');
     fs.mkdirSync(ccsDir, { recursive: true });
 
@@ -152,7 +152,7 @@ describe('profile lifecycle service', () => {
     expect(copyFileSpy).toHaveBeenCalled();
     expect(result.registered).toEqual([]);
     expect(result.skipped).toHaveLength(1);
-    expect(result.skipped[0]?.reason).toContain('could not prepare the profile hook');
+    expect(result.skipped[0]?.reason).toContain('could not prepare the local WebSearch tool');
     expect(config.profiles.extra).toBeUndefined();
   });
 
@@ -240,7 +240,7 @@ describe('profile lifecycle service', () => {
     expect(result.error).toContain('Invalid source profile name');
   });
 
-  it('rolls back copied settings when WebSearch hook setup fails', async () => {
+  it('rolls back copied settings when local WebSearch tool setup fails', async () => {
     const ccsDir = path.join(tempHome, '.ccs');
     fs.mkdirSync(ccsDir, { recursive: true });
     fs.writeFileSync(
@@ -263,7 +263,7 @@ describe('profile lifecycle service', () => {
     const result = await runInScopedCcsDir(() => copyApiProfile('source', 'copy-dest'));
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain('could not prepare the profile hook');
+    expect(result.error).toContain('could not prepare the local WebSearch tool');
     expect(copyFileSpy).toHaveBeenCalled();
     expect(fs.existsSync(path.join(ccsDir, 'copy-dest.settings.json'))).toBe(false);
   });
@@ -287,7 +287,7 @@ describe('profile lifecycle service', () => {
     expect(result.error).toContain('Invalid bundle profile target');
   });
 
-  it('rolls back imported settings when WebSearch hook setup fails', async () => {
+  it('rolls back imported settings when local WebSearch tool setup fails', async () => {
     const ccsDir = path.join(tempHome, '.ccs');
     fs.mkdirSync(ccsDir, { recursive: true });
     fs.writeFileSync(
@@ -314,7 +314,7 @@ describe('profile lifecycle service', () => {
     );
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain('could not prepare the profile hook');
+    expect(result.error).toContain('could not prepare the local WebSearch tool');
     expect(copyFileSpy).toHaveBeenCalled();
     expect(fs.existsSync(path.join(ccsDir, 'import-failure.settings.json'))).toBe(false);
   });

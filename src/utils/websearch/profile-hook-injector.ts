@@ -1,8 +1,9 @@
 /**
  * Profile Hook Injector
  *
- * Injects WebSearch hooks into per-profile settings files.
- * This replaces the global ~/.claude/settings.json approach.
+ * Injects the legacy WebSearch compatibility hook into per-profile settings files.
+ * The first-class runtime now uses the CCS-managed MCP server; these hooks remain
+ * for compatibility and migration safety only.
  *
  * @module utils/websearch/profile-hook-injector
  */
@@ -76,7 +77,8 @@ function migrateGlobalHook(): void {
 }
 
 /**
- * Ensure WebSearch hook is configured in profile's settings file
+ * Ensure the legacy WebSearch compatibility hook is configured in a profile's
+ * settings file when that path is still needed.
  *
  * @param profileName - Name of the profile (e.g., 'agy', 'gemini', 'glm')
  * @returns true if hook is configured (existing or newly added)

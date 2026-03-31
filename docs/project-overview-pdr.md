@@ -35,7 +35,7 @@ CCS provides:
 3. **AI Providers**: Dedicated CLIProxy dashboard for Gemini, Codex, Claude, Vertex, and OpenAI-compatible API-key families
 4. **API Profiles**: GLM, Kimi, OpenRouter, any Anthropic-compatible API
 5. **Visual Dashboard**: React SPA for configuration management
-6. **Automatic WebSearch**: Real backend fallback chain for third-party providers
+6. **Automatic WebSearch**: First-class local WebSearch tool with deterministic provider chain for third-party providers
 7. **Usage Analytics**: Token tracking, cost analysis, model breakdown
 8. **Official Claude Channels**: Runtime auto-enable plus dashboard token/config flow for Telegram, Discord, and macOS-only iMessage
 
@@ -93,7 +93,8 @@ CCS provides:
 - Validate symlinks and permissions
 
 ### FR-007: WebSearch Fallback
-- Intercept WebSearch for third-party profiles that cannot reach Anthropic's native tool
+- Expose a CCS-managed local WebSearch tool for third-party profiles that cannot reach Anthropic's native tool
+- Suppress native `WebSearch` on third-party launches and steer Claude toward the CCS-owned path when it is available
 - Support Exa, Tavily, Brave, and DuckDuckGo real search backends
 - Keep Gemini CLI, OpenCode, and Grok as optional legacy fallback
 - Graceful fallback chain

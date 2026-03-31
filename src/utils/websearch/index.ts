@@ -50,6 +50,31 @@ export { removeHookConfig } from './hook-config';
 // Hook Environment
 export { getWebSearchHookEnv } from './hook-env';
 
+// MCP Runtime
+export {
+  getWebSearchMcpServerName,
+  getWebSearchMcpServerPath,
+  installWebSearchMcpServer,
+  ensureWebSearchMcpConfig,
+  ensureWebSearchMcp,
+  uninstallWebSearchMcpServer,
+  removeWebSearchMcpConfig,
+  uninstallWebSearchMcp,
+  syncWebSearchMcpToConfigDir,
+  ensureWebSearchMcpOrThrow,
+} from './mcp-installer';
+
+// Claude launch args
+export { appendThirdPartyWebSearchToolArgs } from './claude-tool-args';
+
+// Trace helpers
+export {
+  appendWebSearchTrace,
+  createWebSearchTraceContext,
+  isWebSearchTraceEnabled,
+  readWebSearchTraceRecords,
+} from './trace';
+
 // Status and Readiness
 export {
   getWebSearchCliProviders,
@@ -61,5 +86,5 @@ export {
 
 export { WEBSEARCH_API_KEY_PROVIDERS, getWebSearchApiKeyStates } from './provider-secrets';
 
-// Profile Hook Injection
+// Profile compatibility hook injection
 export { ensureProfileHooks, ensureProfileHooksOrThrow } from './profile-hook-injector';

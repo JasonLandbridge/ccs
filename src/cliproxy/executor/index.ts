@@ -53,9 +53,10 @@ import {
 } from '../account-manager';
 import { formatAccountDisplayName } from '../accounts/email-account-identity';
 import {
-  ensureMcpWebSearch,
-  installWebSearchHook,
+  ensureWebSearchMcpOrThrow,
   displayWebSearchStatus,
+  appendThirdPartyWebSearchToolArgs,
+  createWebSearchTraceContext,
 } from '../../utils/websearch-manager';
 import { loadOrCreateUnifiedConfig, getThinkingConfig } from '../../config/unified-config-loader';
 import { installImageAnalyzerHook } from '../../utils/hooks';
@@ -197,9 +198,8 @@ export async function execClaudeWithCLIProxy(
     log(`Remote host: ${proxyConfig.host}:${proxyConfig.port} (${proxyConfig.protocol})`);
   }
 
-  // Setup WebSearch hooks
-  ensureMcpWebSearch();
-  installWebSearchHook();
+  // Setup first-class CCS WebSearch runtime
+  ensureWebSearchMcpOrThrow();
   displayWebSearchStatus();
 
   // Sync image analyzer hook from npm package to ~/.ccs/hooks/
@@ -1035,21 +1035,29 @@ export async function execClaudeWithCLIProxy(
     : getProviderSettingsPath(provider);
 
   let claude: ChildProcess;
+  const launchArgs = ['--settings', settingsPath, ...appendThirdPartyWebSearchToolArgs(claudeArgs)];
+  const traceEnv = createWebSearchTraceContext({
+    launcher: 'cliproxy.executor',
+    args: launchArgs,
+    profile: cfg.profileName || provider,
+    profileType: 'cliproxy',
+    settingsPath,
+    claudeConfigDir: inheritedClaudeConfigDir,
+  });
+  const tracedEnv = { ...env, ...traceEnv };
   if (needsShell) {
-    const cmdString = [claudeCli, '--settings', settingsPath, ...claudeArgs]
-      .map(escapeShellArg)
-      .join(' ');
+    const cmdString = [claudeCli, ...launchArgs].map(escapeShellArg).join(' ');
     claude = spawn(cmdString, {
       stdio: 'inherit',
       windowsHide: true,
       shell: true,
-      env,
+      env: tracedEnv,
     });
   } else {
-    claude = spawn(claudeCli, ['--settings', settingsPath, ...claudeArgs], {
+    claude = spawn(claudeCli, launchArgs, {
       stdio: 'inherit',
       windowsHide: true,
-      env,
+      env: tracedEnv,
     });
   }
 

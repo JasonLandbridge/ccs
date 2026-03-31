@@ -7,6 +7,7 @@
  */
 
 import { getWebSearchConfig } from '../../config/unified-config-loader';
+import { resolveAllowedWebSearchTraceFile } from './trace';
 
 /**
  * Get environment variables for WebSearch hook configuration.
@@ -18,6 +19,14 @@ import { getWebSearchConfig } from '../../config/unified-config-loader';
 export function getWebSearchHookEnv(): Record<string, string> {
   const wsConfig = getWebSearchConfig();
   const env: Record<string, string> = {};
+
+  if (process.env.CCS_WEBSEARCH_TRACE === '1' || process.env.CCS_DEBUG === '1') {
+    env.CCS_WEBSEARCH_TRACE = '1';
+  }
+  const traceFileOverride = resolveAllowedWebSearchTraceFile(process.env);
+  if (traceFileOverride) {
+    env.CCS_WEBSEARCH_TRACE_FILE = traceFileOverride;
+  }
 
   // Skip hook entirely if disabled
   if (!wsConfig.enabled) {

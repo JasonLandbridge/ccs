@@ -104,7 +104,7 @@ describe('profile-writer Anthropic direct', () => {
     expect(settings.env.ANTHROPIC_API_KEY).toBe('');
   });
 
-  it('rolls back the created settings file when WebSearch hook installation fails', () => {
+  it('rolls back the created settings file when local WebSearch tool setup fails', () => {
     const copyFileSpy = spyOn(fs, 'copyFileSync').mockImplementation(() => {
       throw new Error('copy failed');
     });
@@ -117,7 +117,7 @@ describe('profile-writer Anthropic direct', () => {
     );
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain('could not prepare the profile hook');
+    expect(result.error).toContain('could not prepare the local WebSearch tool');
     expect(copyFileSpy).toHaveBeenCalled();
     expect(fs.existsSync(path.join(tempHome, '.ccs', 'hook-failure.settings.json'))).toBe(false);
   });

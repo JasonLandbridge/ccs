@@ -1,7 +1,7 @@
 /**
  * WebSearch Hook Installer
  *
- * Manages installation and uninstallation of the WebSearch hook.
+ * Manages installation and uninstallation of the legacy WebSearch hook runtime.
  *
  * @module utils/websearch/hook-installer
  */
@@ -70,7 +70,8 @@ export function hasWebSearchHook(): boolean {
 /**
  * Install WebSearch hook to ~/.ccs/hooks/
  *
- * This hook intercepts WebSearch and executes via Gemini CLI.
+ * This hook now serves as a compatibility fallback and a shared provider runtime
+ * for the first-class CCS WebSearch MCP server.
  *
  * @returns true if hook installed successfully
  */

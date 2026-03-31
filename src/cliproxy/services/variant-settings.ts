@@ -14,7 +14,7 @@ import { expandPath } from '../../utils/helpers';
 import { getClaudeEnvVars, CLIPROXY_DEFAULT_PORT } from '../config-generator';
 import { CLIProxyProvider } from '../types';
 import { CompositeTierConfig } from '../../config/unified-config-types';
-import { ensureProfileHooksOrThrow } from '../../utils/websearch/profile-hook-injector';
+import { ensureWebSearchMcpOrThrow } from '../../utils/websearch-manager';
 import { ensureProfileHooks as ensureImageAnalyzerHooks } from '../../utils/hooks/image-analyzer-profile-hook-injector';
 import { getEffectiveApiKey } from '../auth-token-manager';
 import { warn } from '../../utils/ui';
@@ -154,8 +154,7 @@ export function createSettingsFile(
   writeSettings(settingsPath, settings);
 
   try {
-    // Inject WebSearch hooks into variant settings
-    ensureProfileHooksOrThrow(`${provider}-${name}`);
+    ensureWebSearchMcpOrThrow();
   } catch (error) {
     rollbackSettingsFile(settingsPath, previousSettingsContent, settingsExisted);
     throw error;
@@ -189,8 +188,7 @@ export function createSettingsFileUnified(
   writeSettings(settingsPath, settings);
 
   try {
-    // Inject WebSearch hooks into variant settings
-    ensureProfileHooksOrThrow(`${provider}-${name}`);
+    ensureWebSearchMcpOrThrow();
   } catch (error) {
     rollbackSettingsFile(settingsPath, previousSettingsContent, settingsExisted);
     throw error;
@@ -289,7 +287,7 @@ export function createCompositeSettingsFile(
   // Hook injectors target ~/.ccs/<profile>.settings.json; only run for default path.
   if (path.resolve(settingsPath) === path.resolve(defaultSettingsPath)) {
     try {
-      ensureProfileHooksOrThrow(`composite-${name}`);
+      ensureWebSearchMcpOrThrow();
     } catch (error) {
       rollbackSettingsFile(settingsPath, previousSettingsContent, settingsExisted);
       throw error;

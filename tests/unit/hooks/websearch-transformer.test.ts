@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'bun:test';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
@@ -29,11 +36,18 @@ const hook = require('../../../lib/hooks/websearch-transformer.cjs') as {
     url: string;
     description: string;
   }>;
+  classifyProviderFailure: (result: {
+    error?: string;
+    retryAfterSec?: number | null;
+    statusCode?: number | null;
+    success?: boolean;
+  }) => Record<string, unknown>;
   formatStructuredSearchResults: (
     query: string,
     providerName: string,
     results: Array<{ title: string; url: string; description: string }>
   ) => string;
+  parseRetryAfterSeconds: (rawValue: string) => number | null;
 };
 
 function runHookWithMockedFetch(mode: 'success' | 'failure') {
@@ -76,6 +90,42 @@ function runHookWithMockedFetch(mode: 'success' | 'failure') {
 }
 
 describe('websearch-transformer hook helpers', () => {
+  it('parses Retry-After seconds and HTTP dates', () => {
+    expect(hook.parseRetryAfterSeconds('2')).toBe(2);
+    expect(
+      hook.parseRetryAfterSeconds(new Date(Date.now() + 2000).toUTCString())
+    ).toBeGreaterThanOrEqual(1);
+    expect(hook.parseRetryAfterSeconds('invalid')).toBeNull();
+  });
+
+  it('classifies quota exhaustion and short rate limits into the correct provider policy', () => {
+    expect(
+      hook.classifyProviderFailure({
+        success: false,
+        statusCode: 429,
+        error: 'Exa returned 429: quota exceeded for current plan',
+      })
+    ).toMatchObject({
+      kind: 'cooldown',
+      reason: 'quota_exhausted',
+      cooldownSec: 900,
+    });
+
+    expect(
+      hook.classifyProviderFailure({
+        success: false,
+        statusCode: 429,
+        retryAfterSec: 2,
+        error: 'Brave Search returned 429: rate limit exceeded',
+      })
+    ).toMatchObject({
+      kind: 'retry',
+      reason: 'rate_limited_short_backoff',
+      delayMs: 2000,
+      retryAfterSec: 2,
+    });
+  });
+
   it('extracts DuckDuckGo results and unwraps uddg redirect URLs', () => {
     const html = `
       <a class="result__a" href="/l/?uddg=https%3A%2F%2Fexample.com%2Farticle">Example title</a>
@@ -192,5 +242,448 @@ describe('websearch-transformer hook helpers', () => {
       'Attempted providers: DuckDuckGo: DuckDuckGo returned 503'
     );
     expect(output).not.toHaveProperty('additionalContext');
+  });
+
+  it('writes opt-in trace records with redacted query fingerprints', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'websearch-hook-trace-'));
+    const preloadPath = join(tempDir, 'mock-fetch.cjs');
+    const ccsHome = join(tempDir, 'home');
+    const tracePath = join(ccsHome, '.ccs', 'logs', 'websearch-trace.jsonl');
+    const html = `
+      <a class="result__a" href="/l/?uddg=https%3A%2F%2Fexample.com%2Farticle">Example title</a>
+      <a class="result__snippet">Example snippet</a>
+    `.trim();
+
+    writeFileSync(
+      preloadPath,
+      `global.fetch = async () => ({ ok: true, text: async () => ${JSON.stringify(html)} });\n`,
+      'utf8'
+    );
+
+    try {
+      const result = spawnSync('node', ['-r', preloadPath, hookPath], {
+        encoding: 'utf8',
+        input: JSON.stringify({
+          tool_name: 'WebSearch',
+          tool_input: { query: 'btc price' },
+        }),
+        env: {
+          ...process.env,
+          CCS_HOME: ccsHome,
+          CCS_WEBSEARCH_TRACE: '1',
+          CCS_WEBSEARCH_TRACE_LAUNCH_ID: 'hook-trace-test',
+          CCS_WEBSEARCH_TRACE_LAUNCHER: 'unit-test',
+          CCS_WEBSEARCH_ENABLED: '1',
+          CCS_WEBSEARCH_SKIP: '0',
+          CCS_WEBSEARCH_BRAVE: '0',
+          CCS_WEBSEARCH_DUCKDUCKGO: '1',
+          CCS_WEBSEARCH_EXA: '0',
+          CCS_WEBSEARCH_GEMINI: '0',
+          CCS_WEBSEARCH_GROK: '0',
+          CCS_WEBSEARCH_OPENCODE: '0',
+          CCS_WEBSEARCH_TAVILY: '0',
+        },
+      });
+
+      expect(result.status).toBe(0);
+
+      const traceContents = readFileSync(tracePath, 'utf8');
+      expect(traceContents).not.toContain('btc price');
+
+      const traceEvents = traceContents
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line) as Record<string, unknown>);
+
+      expect(traceEvents.some((event) => event.event === 'websearch_hook_invoked')).toBe(true);
+      expect(
+        traceEvents.some(
+          (event) =>
+            event.event === 'websearch_provider_attempt' && event.providerName === 'DuckDuckGo'
+        )
+      ).toBe(true);
+      expect(
+        traceEvents.some(
+          (event) =>
+            event.event === 'websearch_provider_success' && event.providerName === 'DuckDuckGo'
+        )
+      ).toBe(true);
+      const fingerprintEvent = traceEvents.find(
+        (event) => event.event === 'websearch_hook_invoked'
+      ) as { queryHash?: string; queryLength?: number } | undefined;
+      expect(fingerprintEvent?.queryHash).toBeString();
+      expect(fingerprintEvent?.queryLength).toBe(9);
+    } finally {
+      rmSync(tempDir, { force: true, recursive: true });
+    }
+  });
+
+  it('falls back to the default trace file when CCS_WEBSEARCH_TRACE_FILE points outside safe paths', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'websearch-hook-trace-safe-'));
+    const preloadPath = join(tempDir, 'mock-fetch.cjs');
+    const ccsHome = join(tempDir, 'home');
+    const fallbackTracePath = join(ccsHome, '.ccs', 'logs', 'websearch-trace.jsonl');
+    const disallowedTracePath = join(process.cwd(), '.tmp-websearch-trace-unsafe.jsonl');
+    const html = `
+      <a class="result__a" href="/l/?uddg=https%3A%2F%2Fexample.com%2Farticle">Example title</a>
+      <a class="result__snippet">Example snippet</a>
+    `.trim();
+
+    writeFileSync(
+      preloadPath,
+      `global.fetch = async () => ({ ok: true, text: async () => ${JSON.stringify(html)} });\n`,
+      'utf8'
+    );
+
+    try {
+      rmSync(disallowedTracePath, { force: true });
+      const result = spawnSync('node', ['-r', preloadPath, hookPath], {
+        encoding: 'utf8',
+        input: JSON.stringify({
+          tool_name: 'WebSearch',
+          tool_input: { query: 'btc price' },
+        }),
+        env: {
+          ...process.env,
+          CCS_HOME: ccsHome,
+          CCS_WEBSEARCH_TRACE: '1',
+          CCS_WEBSEARCH_TRACE_FILE: disallowedTracePath,
+          CCS_WEBSEARCH_TRACE_LAUNCH_ID: 'hook-trace-safe-test',
+          CCS_WEBSEARCH_TRACE_LAUNCHER: 'unit-test',
+          CCS_WEBSEARCH_ENABLED: '1',
+          CCS_WEBSEARCH_SKIP: '0',
+          CCS_WEBSEARCH_BRAVE: '0',
+          CCS_WEBSEARCH_DUCKDUCKGO: '1',
+          CCS_WEBSEARCH_EXA: '0',
+          CCS_WEBSEARCH_GEMINI: '0',
+          CCS_WEBSEARCH_GROK: '0',
+          CCS_WEBSEARCH_OPENCODE: '0',
+          CCS_WEBSEARCH_TAVILY: '0',
+        },
+      });
+
+      expect(result.status).toBe(0);
+      expect(existsSync(disallowedTracePath)).toBe(false);
+      expect(existsSync(fallbackTracePath)).toBe(true);
+    } finally {
+      rmSync(disallowedTracePath, { force: true });
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('applies provider cooldown on quota exhaustion and falls back to the next backend', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'websearch-hook-quota-'));
+    const preloadPath = join(tempDir, 'mock-fetch.cjs');
+    const requestLogPath = join(tempDir, 'requests.json');
+    const ccsHome = join(tempDir, 'home');
+    const statePath = join(ccsHome, '.ccs', 'cache', 'websearch-provider-state.json');
+    const tracePath = join(ccsHome, '.ccs', 'logs', 'websearch-trace.jsonl');
+    const html = `
+      <a class="result__a" href="/l/?uddg=https%3A%2F%2Fexample.com%2Farticle">Fallback title</a>
+      <a class="result__snippet">Fallback snippet</a>
+    `.trim();
+
+    writeFileSync(
+      preloadPath,
+      `
+const fs = require('fs');
+const requestLogPath = ${JSON.stringify(requestLogPath)};
+const html = ${JSON.stringify(html)};
+function record(url) {
+  const requests = fs.existsSync(requestLogPath)
+    ? JSON.parse(fs.readFileSync(requestLogPath, 'utf8'))
+    : [];
+  requests.push(String(url));
+  fs.writeFileSync(requestLogPath, JSON.stringify(requests), 'utf8');
+}
+global.fetch = async (url) => {
+  const resolvedUrl = String(url);
+  record(resolvedUrl);
+  if (resolvedUrl.includes('api.exa.ai')) {
+    return {
+      ok: false,
+      status: 429,
+      headers: { get: () => null },
+      text: async () => 'quota exceeded for current plan',
+    };
+  }
+  return {
+    ok: true,
+    headers: { get: () => null },
+    text: async () => html,
+  };
+};
+      `.trimStart(),
+      'utf8'
+    );
+
+    try {
+      const result = spawnSync('node', ['-r', preloadPath, hookPath], {
+        encoding: 'utf8',
+        input: JSON.stringify({
+          tool_name: 'WebSearch',
+          tool_input: { query: 'btc price' },
+        }),
+        env: {
+          ...process.env,
+          CCS_HOME: ccsHome,
+          CCS_WEBSEARCH_TRACE: '1',
+          CCS_WEBSEARCH_TRACE_LAUNCH_ID: 'quota-fallback-test',
+          CCS_WEBSEARCH_TRACE_LAUNCHER: 'unit-test',
+          CCS_WEBSEARCH_ENABLED: '1',
+          CCS_WEBSEARCH_SKIP: '0',
+          CCS_WEBSEARCH_BRAVE: '0',
+          CCS_WEBSEARCH_DUCKDUCKGO: '1',
+          CCS_WEBSEARCH_EXA: '1',
+          CCS_WEBSEARCH_GEMINI: '0',
+          CCS_WEBSEARCH_GROK: '0',
+          CCS_WEBSEARCH_OPENCODE: '0',
+          CCS_WEBSEARCH_TAVILY: '0',
+          EXA_API_KEY: 'exa-test-key',
+        },
+      });
+
+      expect(result.status).toBe(0);
+      const output = JSON.parse(result.stdout.trim()) as HookOutput;
+      expect(output.hookSpecificOutput.additionalContext).toContain('Provider: DuckDuckGo');
+
+      const providerState = JSON.parse(readFileSync(statePath, 'utf8')) as {
+        cooldowns?: Record<string, { reason?: string; until?: number }>;
+      };
+      expect(providerState.cooldowns?.exa?.reason).toBe('quota_exhausted');
+      expect(providerState.cooldowns?.exa?.until).toBeGreaterThan(Date.now());
+
+      const traceEvents = readFileSync(tracePath, 'utf8')
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line) as Record<string, unknown>);
+      expect(
+        traceEvents.some(
+          (event) =>
+            event.event === 'websearch_provider_cooldown_applied' &&
+            event.providerId === 'exa' &&
+            event.reason === 'quota_exhausted'
+        )
+      ).toBe(true);
+      expect(
+        traceEvents.some(
+          (event) =>
+            event.event === 'websearch_provider_success' &&
+            event.providerId === 'duckduckgo'
+        )
+      ).toBe(true);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('skips providers that are already cooling down on later WebSearch calls', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'websearch-hook-cooldown-skip-'));
+    const preloadPath = join(tempDir, 'mock-fetch.cjs');
+    const requestLogPath = join(tempDir, 'requests.json');
+    const ccsHome = join(tempDir, 'home');
+    const statePath = join(ccsHome, '.ccs', 'cache', 'websearch-provider-state.json');
+    const tracePath = join(ccsHome, '.ccs', 'logs', 'websearch-trace.jsonl');
+    const html = `
+      <a class="result__a" href="/l/?uddg=https%3A%2F%2Fexample.com%2Fcooldown">Cooldown title</a>
+      <a class="result__snippet">Cooldown snippet</a>
+    `.trim();
+
+    mkdirSync(join(ccsHome, '.ccs', 'cache'), { recursive: true });
+    writeFileSync(
+      statePath,
+      JSON.stringify(
+        {
+          cooldowns: {
+            exa: {
+              until: Date.now() + 10 * 60 * 1000,
+              reason: 'quota_exhausted',
+            },
+          },
+        },
+        null,
+        2
+      ),
+      'utf8'
+    );
+    writeFileSync(
+      preloadPath,
+      `
+const fs = require('fs');
+const requestLogPath = ${JSON.stringify(requestLogPath)};
+const html = ${JSON.stringify(html)};
+function record(url) {
+  const requests = fs.existsSync(requestLogPath)
+    ? JSON.parse(fs.readFileSync(requestLogPath, 'utf8'))
+    : [];
+  requests.push(String(url));
+  fs.writeFileSync(requestLogPath, JSON.stringify(requests), 'utf8');
+}
+global.fetch = async (url) => {
+  record(url);
+  return {
+    ok: true,
+    headers: { get: () => null },
+    text: async () => html,
+  };
+};
+      `.trimStart(),
+      'utf8'
+    );
+
+    try {
+      const result = spawnSync('node', ['-r', preloadPath, hookPath], {
+        encoding: 'utf8',
+        input: JSON.stringify({
+          tool_name: 'WebSearch',
+          tool_input: { query: 'btc price' },
+        }),
+        env: {
+          ...process.env,
+          CCS_HOME: ccsHome,
+          CCS_WEBSEARCH_TRACE: '1',
+          CCS_WEBSEARCH_TRACE_LAUNCH_ID: 'cooldown-skip-test',
+          CCS_WEBSEARCH_TRACE_LAUNCHER: 'unit-test',
+          CCS_WEBSEARCH_ENABLED: '1',
+          CCS_WEBSEARCH_SKIP: '0',
+          CCS_WEBSEARCH_BRAVE: '0',
+          CCS_WEBSEARCH_DUCKDUCKGO: '1',
+          CCS_WEBSEARCH_EXA: '1',
+          CCS_WEBSEARCH_GEMINI: '0',
+          CCS_WEBSEARCH_GROK: '0',
+          CCS_WEBSEARCH_OPENCODE: '0',
+          CCS_WEBSEARCH_TAVILY: '0',
+          EXA_API_KEY: 'exa-test-key',
+        },
+      });
+
+      expect(result.status).toBe(0);
+      const output = JSON.parse(result.stdout.trim()) as HookOutput;
+      expect(output.hookSpecificOutput.additionalContext).toContain('Provider: DuckDuckGo');
+
+      const requests = JSON.parse(readFileSync(requestLogPath, 'utf8')) as string[];
+      expect(requests.some((url) => url.includes('api.exa.ai'))).toBe(false);
+
+      const traceEvents = readFileSync(tracePath, 'utf8')
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line) as Record<string, unknown>);
+      expect(
+        traceEvents.some(
+          (event) =>
+            event.event === 'websearch_provider_cooldown_skip' &&
+            event.providerId === 'exa' &&
+            event.cooldownReason === 'quota_exhausted'
+        )
+      ).toBe(true);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('retries transient backend failures once before succeeding', () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'websearch-hook-retry-'));
+    const preloadPath = join(tempDir, 'mock-fetch.cjs');
+    const requestLogPath = join(tempDir, 'requests.json');
+    const ccsHome = join(tempDir, 'home');
+    const tracePath = join(ccsHome, '.ccs', 'logs', 'websearch-trace.jsonl');
+
+    writeFileSync(
+      preloadPath,
+      `
+const fs = require('fs');
+const requestLogPath = ${JSON.stringify(requestLogPath)};
+let exaAttempts = 0;
+function record(url) {
+  const requests = fs.existsSync(requestLogPath)
+    ? JSON.parse(fs.readFileSync(requestLogPath, 'utf8'))
+    : [];
+  requests.push(String(url));
+  fs.writeFileSync(requestLogPath, JSON.stringify(requests), 'utf8');
+}
+global.fetch = async (url) => {
+  const resolvedUrl = String(url);
+  record(resolvedUrl);
+  exaAttempts += 1;
+  if (exaAttempts === 1) {
+    return {
+      ok: false,
+      status: 503,
+      headers: { get: () => null },
+      text: async () => 'service unavailable',
+    };
+  }
+  return {
+    ok: true,
+    headers: { get: () => null },
+    json: async () => ({
+      results: [
+        {
+          title: 'Exa title',
+          url: 'https://example.com/exa',
+          text: 'Exa snippet',
+        },
+      ],
+    }),
+  };
+};
+      `.trimStart(),
+      'utf8'
+    );
+
+    try {
+      const result = spawnSync('node', ['-r', preloadPath, hookPath], {
+        encoding: 'utf8',
+        input: JSON.stringify({
+          tool_name: 'WebSearch',
+          tool_input: { query: 'btc price' },
+        }),
+        env: {
+          ...process.env,
+          CCS_HOME: ccsHome,
+          CCS_WEBSEARCH_TRACE: '1',
+          CCS_WEBSEARCH_TRACE_LAUNCH_ID: 'transient-retry-test',
+          CCS_WEBSEARCH_TRACE_LAUNCHER: 'unit-test',
+          CCS_WEBSEARCH_ENABLED: '1',
+          CCS_WEBSEARCH_SKIP: '0',
+          CCS_WEBSEARCH_BRAVE: '0',
+          CCS_WEBSEARCH_DUCKDUCKGO: '0',
+          CCS_WEBSEARCH_EXA: '1',
+          CCS_WEBSEARCH_GEMINI: '0',
+          CCS_WEBSEARCH_GROK: '0',
+          CCS_WEBSEARCH_OPENCODE: '0',
+          CCS_WEBSEARCH_TAVILY: '0',
+          EXA_API_KEY: 'exa-test-key',
+        },
+      });
+
+      expect(result.status).toBe(0);
+      const output = JSON.parse(result.stdout.trim()) as HookOutput;
+      expect(output.hookSpecificOutput.additionalContext).toContain('Provider: Exa');
+
+      const requests = JSON.parse(readFileSync(requestLogPath, 'utf8')) as string[];
+      expect(requests.filter((url) => url.includes('api.exa.ai'))).toHaveLength(2);
+
+      const traceEvents = readFileSync(tracePath, 'utf8')
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line) as Record<string, unknown>);
+      expect(
+        traceEvents.some(
+          (event) =>
+            event.event === 'websearch_provider_retry_scheduled' &&
+            event.providerId === 'exa' &&
+            event.reason === 'transient_failure'
+        )
+      ).toBe(true);
+      expect(
+        traceEvents.some(
+          (event) =>
+            event.event === 'websearch_provider_success' && event.providerId === 'exa'
+        )
+      ).toBe(true);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 });
