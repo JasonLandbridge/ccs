@@ -38,6 +38,15 @@ describe('ensureWebSearchMcp', () => {
     );
   }
 
+  function getManagedConfig() {
+    return {
+      type: 'stdio',
+      command: 'node',
+      args: [getWebSearchMcpServerPath()],
+      env: {},
+    };
+  }
+
   afterEach(() => {
     mock.restore();
 
@@ -79,14 +88,36 @@ describe('ensureWebSearchMcp', () => {
     expect(fs.existsSync(getWebSearchMcpServerPath())).toBe(true);
 
     const config = JSON.parse(fs.readFileSync(claudeUserConfigPath, 'utf8')) as {
-      mcpServers: Record<string, { command: string; args: string[] }>;
+      mcpServers: Record<string, unknown>;
     };
 
     expect(config.mcpServers.existing).toEqual({ command: 'uvx', args: ['some-server'] });
-    expect(config.mcpServers[getWebSearchMcpServerName()]).toEqual({
-      command: 'node',
-      args: [getWebSearchMcpServerPath()],
+    expect(config.mcpServers[getWebSearchMcpServerName()]).toEqual(getManagedConfig());
+  });
+
+  it('preserves the existing ~/.claude.json permissions when provisioning WebSearch MCP', () => {
+    setupTempHome();
+    writeEnabledConfig();
+
+    const claudeUserConfigPath = path.join(tempHome as string, '.claude.json');
+    fs.writeFileSync(claudeUserConfigPath, JSON.stringify({ existing: true }, null, 2) + '\n', {
+      encoding: 'utf8',
+      mode: 0o600,
     });
+    fs.chmodSync(claudeUserConfigPath, 0o600);
+
+    expect(ensureWebSearchMcp()).toBe(true);
+    expect(fs.statSync(claudeUserConfigPath).mode & 0o777).toBe(0o600);
+  });
+
+  it('writes new ~/.claude.json with 0600 permissions', () => {
+    setupTempHome();
+    writeEnabledConfig();
+
+    const claudeUserConfigPath = path.join(tempHome as string, '.claude.json');
+
+    expect(ensureWebSearchMcp()).toBe(true);
+    expect(fs.statSync(claudeUserConfigPath).mode & 0o777).toBe(0o600);
   });
 
   it('returns false and preserves malformed ~/.claude.json', () => {

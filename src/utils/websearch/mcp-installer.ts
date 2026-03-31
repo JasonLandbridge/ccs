@@ -20,6 +20,13 @@ interface ClaudeUserConfig {
   [key: string]: unknown;
 }
 
+interface ManagedWebSearchMcpConfig {
+  type: 'stdio';
+  command: 'node';
+  args: [string];
+  env: Record<string, string>;
+}
+
 function getCcsMcpDir(): string {
   return path.join(getCcsDir(), 'mcp');
 }
@@ -91,9 +98,11 @@ function readClaudeUserConfig(configPath: string): ClaudeUserConfig | null {
 
 function writeClaudeUserConfig(configPath: string, config: ClaudeUserConfig): boolean {
   const tempPath = getTempPath(configPath);
+  const fileMode = fs.existsSync(configPath) ? fs.statSync(configPath).mode & 0o777 : 0o600;
 
   try {
     fs.writeFileSync(tempPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
+    fs.chmodSync(tempPath, fileMode);
     fs.renameSync(tempPath, configPath);
     return true;
   } finally {
@@ -252,9 +261,11 @@ export function ensureWebSearchMcpConfig(): boolean {
     config.mcpServers && typeof config.mcpServers === 'object' && !Array.isArray(config.mcpServers)
       ? (config.mcpServers as Record<string, unknown>)
       : {};
-  const desiredServerConfig = {
+  const desiredServerConfig: ManagedWebSearchMcpConfig = {
+    type: 'stdio',
     command: 'node',
     args: [getWebSearchMcpServerPath()],
+    env: {},
   };
 
   const currentConfig = existingServers[WEBSEARCH_MCP_SERVER_NAME];

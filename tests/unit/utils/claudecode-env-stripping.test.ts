@@ -374,11 +374,13 @@ describe('CLAUDECODE environment stripping', () => {
     const claudeUserConfig = JSON.parse(
       fs.readFileSync(path.join(process.env.CCS_HOME as string, '.claude.json'), 'utf8')
     ) as {
-      mcpServers?: Record<string, { command: string; args: string[] }>;
+      mcpServers?: Record<string, unknown>;
     };
     expect(claudeUserConfig.mcpServers?.['ccs-websearch']).toEqual({
+      type: 'stdio',
       command: 'node',
       args: [path.join(ccsDir, 'mcp', 'ccs-websearch-server.cjs')],
+      env: {},
     });
   });
 

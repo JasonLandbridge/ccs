@@ -7,6 +7,10 @@ import { join } from 'node:path';
 const serverPath = join(process.cwd(), 'lib', 'mcp', 'ccs-websearch-server.cjs');
 
 function encodeMessage(message: unknown): string {
+  return `${JSON.stringify(message)}\n`;
+}
+
+function encodeLegacyMessage(message: unknown): string {
   const body = JSON.stringify(message);
   return `Content-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`;
 }
@@ -22,26 +26,47 @@ function collectResponses(
 
     function tryParse(): void {
       while (true) {
-        const headerEnd = buffer.indexOf('\r\n\r\n');
-        if (headerEnd === -1) {
-          return;
+        const startsWithLegacyHeaders = buffer
+          .slice(0, Math.min(buffer.length, 32))
+          .toString('utf8')
+          .toLowerCase()
+          .startsWith('content-length:');
+
+        let body: string;
+        if (startsWithLegacyHeaders) {
+          const headerEnd = buffer.indexOf('\r\n\r\n');
+          if (headerEnd === -1) {
+            return;
+          }
+
+          const headerText = buffer.slice(0, headerEnd).toString('utf8');
+          const match = headerText.match(/content-length:\s*(\d+)/i);
+          if (!match) {
+            reject(new Error('Missing Content-Length header'));
+            return;
+          }
+
+          const contentLength = Number.parseInt(match[1], 10);
+          const messageEnd = headerEnd + 4 + contentLength;
+          if (buffer.length < messageEnd) {
+            return;
+          }
+
+          body = buffer.slice(headerEnd + 4, messageEnd).toString('utf8');
+          buffer = buffer.slice(messageEnd);
+        } else {
+          const newlineIndex = buffer.indexOf('\n');
+          if (newlineIndex === -1) {
+            return;
+          }
+
+          body = buffer.slice(0, newlineIndex).toString('utf8').replace(/\r$/, '').trim();
+          buffer = buffer.slice(newlineIndex + 1);
+          if (!body) {
+            continue;
+          }
         }
 
-        const headerText = buffer.slice(0, headerEnd).toString('utf8');
-        const match = headerText.match(/content-length:\s*(\d+)/i);
-        if (!match) {
-          reject(new Error('Missing Content-Length header'));
-          return;
-        }
-
-        const contentLength = Number.parseInt(match[1], 10);
-        const messageEnd = headerEnd + 4 + contentLength;
-        if (buffer.length < messageEnd) {
-          return;
-        }
-
-        const body = buffer.slice(headerEnd + 4, messageEnd).toString('utf8');
-        buffer = buffer.slice(messageEnd);
         responses.push(JSON.parse(body) as Record<string, unknown>);
 
         if (responses.length >= expectedCount) {
@@ -373,5 +398,41 @@ describe('ccs-websearch MCP server', () => {
     ).toBe(true);
 
     rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('accepts legacy Content-Length framed requests for compatibility', async () => {
+    const child = spawn('node', [serverPath], {
+      env: {
+        ...process.env,
+        CCS_PROFILE_TYPE: 'account',
+        CCS_WEBSEARCH_ENABLED: '1',
+        CCS_WEBSEARCH_SKIP: '1',
+        CCS_WEBSEARCH_DUCKDUCKGO: '1',
+      },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    try {
+      const responsesPromise = collectResponses(child, 2);
+      child.stdin.write(
+        encodeLegacyMessage({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'initialize',
+          params: {
+            protocolVersion: '2024-11-05',
+            capabilities: {},
+            clientInfo: { name: 'bun-test', version: '1.0.0' },
+          },
+        })
+      );
+      child.stdin.write(encodeLegacyMessage({ jsonrpc: '2.0', id: 2, method: 'tools/list' }));
+
+      const responses = await responsesPromise;
+      const toolsList = responses.find((message) => message.id === 2);
+      expect(toolsList?.result).toEqual({ tools: [] });
+    } finally {
+      child.kill();
+    }
   });
 });

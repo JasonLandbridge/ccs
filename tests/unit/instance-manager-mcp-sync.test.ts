@@ -150,7 +150,12 @@ describe('InstanceManager MCP sync', () => {
       JSON.stringify(
         {
           mcpServers: {
-            'ccs-websearch': { command: 'node', args: ['/global/server.cjs'] },
+            'ccs-websearch': {
+              type: 'stdio',
+              command: 'node',
+              args: ['/global/server.cjs'],
+              env: {},
+            },
             shared: { command: 'global-shared' },
           },
         },
@@ -168,7 +173,12 @@ describe('InstanceManager MCP sync', () => {
       JSON.stringify(
         {
           mcpServers: {
-            'ccs-websearch': { command: 'node', args: ['/old/server.cjs'] },
+            'ccs-websearch': {
+              type: 'stdio',
+              command: 'node',
+              args: ['/old/server.cjs'],
+              env: {},
+            },
             shared: { command: 'instance-shared' },
             instanceOnly: { command: 'instance-only' },
           },
@@ -185,7 +195,12 @@ describe('InstanceManager MCP sync', () => {
       mcpServers: Record<string, unknown>;
     };
     expect(instanceContent.mcpServers).toEqual({
-      'ccs-websearch': { command: 'node', args: ['/global/server.cjs'] },
+      'ccs-websearch': {
+        type: 'stdio',
+        command: 'node',
+        args: ['/global/server.cjs'],
+        env: {},
+      },
       shared: { command: 'instance-shared' },
       instanceOnly: { command: 'instance-only' },
     });

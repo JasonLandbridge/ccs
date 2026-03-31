@@ -6,16 +6,103 @@
  * @module utils/websearch/status
  */
 
+import { existsSync, readFileSync } from 'fs';
+import { join } from 'path';
 import { ok, warn, fail, info } from '../ui';
 import { getWebSearchConfig } from '../../config/unified-config-loader';
+import { getCcsDir } from '../config-manager';
 import { getGeminiCliStatus, isGeminiAuthenticated } from './gemini-cli';
 import { getGrokCliStatus } from './grok-cli';
 import { getOpenCodeCliStatus } from './opencode-cli';
 import { getWebSearchApiKeyStates } from './provider-secrets';
 import type { WebSearchCliInfo, WebSearchStatus } from './types';
 
+const PROVIDER_STATE_FILE = 'websearch-provider-state.json';
+
+type ProviderCooldown = {
+  reason: string;
+  until: number;
+};
+
 function hasEnvValue(name: string): boolean {
   return (process.env[name] || '').trim().length > 0;
+}
+
+function getProviderStatePath(): string {
+  return join(getCcsDir(), 'cache', PROVIDER_STATE_FILE);
+}
+
+function readProviderCooldowns(now = Date.now()): Record<string, ProviderCooldown> {
+  try {
+    const statePath = getProviderStatePath();
+    if (!existsSync(statePath)) {
+      return {};
+    }
+
+    const parsed = JSON.parse(readFileSync(statePath, 'utf8')) as {
+      cooldowns?: Record<string, { reason?: unknown; until?: unknown }>;
+    };
+    const nextCooldowns: Record<string, ProviderCooldown> = {};
+
+    for (const [providerId, entry] of Object.entries(parsed.cooldowns || {})) {
+      const until = Number.parseInt(String(entry?.until || ''), 10);
+      if (!Number.isFinite(until) || until <= now) {
+        continue;
+      }
+
+      nextCooldowns[providerId] = {
+        reason: typeof entry?.reason === 'string' ? entry.reason : 'rate_limited',
+        until,
+      };
+    }
+
+    return nextCooldowns;
+  } catch {
+    return {};
+  }
+}
+
+function formatCooldownDuration(until: number, now = Date.now()): string {
+  const remainingSec = Math.max(1, Math.ceil((until - now) / 1000));
+  if (remainingSec >= 3600) {
+    return `~${Math.ceil(remainingSec / 3600)}h`;
+  }
+  if (remainingSec >= 60) {
+    return `~${Math.ceil(remainingSec / 60)}m`;
+  }
+  return `~${remainingSec}s`;
+}
+
+function formatCooldownReason(reason: string): string {
+  switch (reason) {
+    case 'quota_exhausted':
+      return 'quota exhaustion';
+    case 'rate_limited':
+      return 'rate limiting';
+    default:
+      return 'a temporary provider error';
+  }
+}
+
+function applyCooldownStatus(
+  provider: WebSearchCliInfo,
+  cooldowns: Record<string, ProviderCooldown>,
+  now = Date.now()
+): WebSearchCliInfo {
+  if (!(provider.enabled && provider.available)) {
+    return provider;
+  }
+
+  const cooldown = cooldowns[provider.id];
+  if (!cooldown) {
+    return provider;
+  }
+
+  return {
+    ...provider,
+    available: false,
+    detail: `Cooling down ${formatCooldownDuration(cooldown.until, now)} after ${formatCooldownReason(cooldown.reason)}`,
+  };
 }
 
 function getLegacyProviderStatuses(): WebSearchCliInfo[] {
@@ -86,6 +173,7 @@ function getLegacyProviderStatuses(): WebSearchCliInfo[] {
 export function getWebSearchCliProviders(): WebSearchCliInfo[] {
   const wsConfig = getWebSearchConfig();
   const apiKeyStates = getWebSearchApiKeyStates();
+  const cooldowns = readProviderCooldowns();
   const providers: WebSearchCliInfo[] = [
     {
       id: 'exa',
@@ -152,7 +240,9 @@ export function getWebSearchCliProviders(): WebSearchCliInfo[] {
     },
   ];
 
-  return [...providers, ...getLegacyProviderStatuses()];
+  return [...providers, ...getLegacyProviderStatuses()].map((provider) =>
+    applyCooldownStatus(provider, cooldowns)
+  );
 }
 
 /**
