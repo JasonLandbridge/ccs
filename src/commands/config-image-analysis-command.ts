@@ -40,6 +40,13 @@ const IMAGE_ANALYSIS_PROVIDER_ALIASES = Object.freeze(
   )
 );
 
+function isConfiguredImageAnalysisBackend(
+  backend: string | null,
+  providerModels: Record<string, string>
+): backend is string {
+  return Boolean(backend && Object.prototype.hasOwnProperty.call(providerModels, backend));
+}
+
 function parseArgs(args: string[]): ImageAnalysisCommandOptions {
   const options: ImageAnalysisCommandOptions = {
     enable: hasAnyFlag(args, ['--enable']),
@@ -296,7 +303,7 @@ export async function handleConfigImageAnalysisCommand(args: string[]): Promise<
       options.setFallback,
       Object.keys(imageConfig.provider_models)
     );
-    if (!normalizedBackend) {
+    if (!isConfiguredImageAnalysisBackend(normalizedBackend, imageConfig.provider_models)) {
       console.error(fail(`Invalid fallback backend: ${options.setFallback}`));
       process.exit(1);
     }
@@ -314,7 +321,7 @@ export async function handleConfigImageAnalysisCommand(args: string[]): Promise<
       console.error(fail('Profile name cannot be empty'));
       process.exit(1);
     }
-    if (!normalizedBackend) {
+    if (!isConfiguredImageAnalysisBackend(normalizedBackend, imageConfig.provider_models)) {
       console.error(fail(`Invalid backend: ${options.setProfileBackend.backend}`));
       process.exit(1);
     }

@@ -4,7 +4,7 @@
  * Unit tests for ccs config image-analysis subcommand.
  */
 
-import { describe, it, expect, beforeEach, afterEach, spyOn, mock } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -31,6 +31,13 @@ afterEach(() => {
 // Helper to create config.yaml for tests
 function createConfigYaml(content: string): void {
   fs.writeFileSync(path.join(testDir, 'config.yaml'), content, 'utf8');
+}
+
+async function loadHandleConfigImageAnalysisCommand() {
+  const mod = await import(
+    `../../../src/commands/config-image-analysis-command?test=${Date.now()}-${Math.random()}`
+  );
+  return mod.handleConfigImageAnalysisCommand;
 }
 
 describe('config image-analysis command', () => {
@@ -150,6 +157,56 @@ image_analysis:
 
       for (const provider of invalidProviders) {
         expect(validProviders.includes(provider)).toBe(false);
+      }
+    });
+
+    it('rejects invalid fallback backends that are not configured', async () => {
+      const handleConfigImageAnalysisCommand = await loadHandleConfigImageAnalysisCommand();
+      const originalProcessExit = process.exit;
+
+      process.exit = ((code?: number) => {
+        throw new Error(`process.exit(${code ?? 0})`);
+      }) as typeof process.exit;
+
+      try {
+        await expect(
+          handleConfigImageAnalysisCommand(['--set-fallback', 'unknown-provider'])
+        ).rejects.toThrow('process.exit(1)');
+      } finally {
+        process.exit = originalProcessExit;
+      }
+
+      const configPath = path.join(testDir, 'config.yaml');
+      if (fs.existsSync(configPath)) {
+        const content = fs.readFileSync(configPath, 'utf8');
+        expect(content).not.toContain('fallback_backend: unknown-provider');
+      } else {
+        expect(fs.existsSync(configPath)).toBe(false);
+      }
+    });
+
+    it('rejects invalid profile backend mappings that are not configured', async () => {
+      const handleConfigImageAnalysisCommand = await loadHandleConfigImageAnalysisCommand();
+      const originalProcessExit = process.exit;
+
+      process.exit = ((code?: number) => {
+        throw new Error(`process.exit(${code ?? 0})`);
+      }) as typeof process.exit;
+
+      try {
+        await expect(
+          handleConfigImageAnalysisCommand(['--set-profile-backend', 'orq', 'unknown-provider'])
+        ).rejects.toThrow('process.exit(1)');
+      } finally {
+        process.exit = originalProcessExit;
+      }
+
+      const configPath = path.join(testDir, 'config.yaml');
+      if (fs.existsSync(configPath)) {
+        const content = fs.readFileSync(configPath, 'utf8');
+        expect(content).not.toContain('unknown-provider');
+      } else {
+        expect(fs.existsSync(configPath)).toBe(false);
       }
     });
   });
