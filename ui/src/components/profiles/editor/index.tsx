@@ -124,6 +124,7 @@ export function ProfileEditor({
     data: previewStatusResponse,
     isFetching: isPreviewStatusFetching,
     isError: isPreviewStatusError,
+    isPlaceholderData: isPreviewStatusPlaceholderData,
   } = useQuery<{ imageAnalysisStatus: SettingsResponse['imageAnalysisStatus'] }>({
     queryKey: ['settings', profileName, 'image-analysis-status-preview', deferredPreviewJson],
     enabled: previewSettings !== null,
@@ -160,7 +161,8 @@ export function ProfileEditor({
       ? 'invalid'
       : isPreviewStatusError
         ? 'saved'
-        : isPreviewStatusFetching && !previewStatusResponse?.imageAnalysisStatus
+        : isPreviewStatusFetching &&
+            (!previewStatusResponse?.imageAnalysisStatus || isPreviewStatusPlaceholderData)
           ? 'refreshing'
           : 'preview';
 
@@ -219,7 +221,8 @@ export function ProfileEditor({
       toast.success(i18n.t('commonToast.defaultTargetUpdated'));
     },
     onError: (error: Error, target: CliTarget) => {
-      const targetLabel = target === 'droid' ? 'Factory Droid' : 'Claude Code';
+      const targetLabel =
+        target === 'droid' ? 'Factory Droid' : target === 'codex' ? 'Codex CLI' : 'Claude Code';
       const suffix = error.message.trim() ? `: ${error.message}` : '';
       toast.error(i18n.t('commonToast.failedUpdateDefaultTarget', { target: targetLabel, suffix }));
     },
@@ -311,6 +314,7 @@ export function ProfileEditor({
               isRawJsonValid={computedIsRawJsonValid}
               rawJsonEdits={rawJsonEdits}
               settings={settings}
+              profileTarget={resolvedTarget}
               imageAnalysisStatus={imageAnalysisStatus}
               imageAnalysisStatusSource={imageAnalysisStatusSource}
               imageAnalysisStatusPreviewState={imageAnalysisStatusPreviewState}

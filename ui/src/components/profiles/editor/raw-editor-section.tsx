@@ -8,7 +8,7 @@ import { Loader2, X, AlertTriangle } from 'lucide-react';
 import { GlobalEnvIndicator } from '@/components/shared/global-env-indicator';
 import { ImageAnalysisStatusSection } from './image-analysis-status-section';
 import type { Settings } from './types';
-import type { ImageAnalysisStatus } from '@/lib/api-client';
+import type { CliTarget, ImageAnalysisStatus } from '@/lib/api-client';
 
 // Lazy load CodeEditor
 const CodeEditor = lazy(() =>
@@ -20,6 +20,7 @@ interface RawEditorSectionProps {
   isRawJsonValid: boolean;
   rawJsonEdits: string | null;
   settings: Settings | undefined;
+  profileTarget?: CliTarget;
   imageAnalysisStatus?: ImageAnalysisStatus | null;
   imageAnalysisStatusSource?: 'saved' | 'editor';
   imageAnalysisStatusPreviewState?: 'saved' | 'preview' | 'refreshing' | 'invalid';
@@ -32,6 +33,7 @@ export function RawEditorSection({
   isRawJsonValid,
   rawJsonEdits,
   settings,
+  profileTarget = 'claude',
   imageAnalysisStatus,
   imageAnalysisStatusSource = 'saved',
   imageAnalysisStatusPreviewState = 'saved',
@@ -86,6 +88,7 @@ export function RawEditorSection({
         <div className="mx-6 mb-4">
           <ImageAnalysisStatusSection
             status={imageAnalysisStatus}
+            target={profileTarget}
             source={imageAnalysisStatusSource}
             previewState={imageAnalysisStatusPreviewState}
           />

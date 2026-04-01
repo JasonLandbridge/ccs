@@ -99,7 +99,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 // Types
-export type CliTarget = 'claude' | 'droid';
+export type CliTarget = 'claude' | 'droid' | 'codex';
 
 export interface CliproxyBridgeMetadata {
   provider: CLIProxyProvider;
