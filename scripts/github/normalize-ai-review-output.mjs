@@ -704,12 +704,15 @@ function renderDetailedFindings(findings) {
 
     lines.push(`**${SEVERITY_SUMMARY_LABELS[severity]} (${scopedFindings.length})**`, '');
     for (const [index, finding] of scopedFindings.entries()) {
+      const snippets = Array.isArray(finding.snippets) ? finding.snippets : [];
       lines.push(`#### ${index + 1}. ${renderInlineText(finding.title)}`);
       lines.push(`- Location: ${renderCode(renderFindingReference(finding))}`);
       lines.push(`- Impact: ${renderInlineText(finding.why)}`);
       lines.push(`- Problem: ${renderInlineText(finding.what)}`);
       lines.push(`- Fix: ${renderInlineText(finding.fix)}`);
-      lines.push(...renderFindingSnippets(finding.snippets));
+      if (snippets.length > 0) {
+        lines.push('', ...renderFindingSnippets(snippets));
+      }
       lines.push('');
     }
   }

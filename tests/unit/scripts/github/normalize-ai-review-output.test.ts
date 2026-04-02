@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 const reviewOutput = await import('../../../../scripts/github/normalize-ai-review-output.mjs');
+const { marked } = await import('marked');
 
 function withTempDir(prefix: string, run: (tempDir: string) => void) {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
@@ -209,6 +210,47 @@ describe('normalize-ai-review-output', () => {
     expect(markdown).toContain('marker_file="$RUNNER_TEMP/.ai-review-marker"');
     expect(markdown).toContain('printf "%s\\n" "$REVIEW_MARKER" > "$marker_file"');
     expect(markdown).toContain('```');
+  });
+
+  test('renders finding evidence as a standalone block after the fix bullet in markdown', async () => {
+    const validation = reviewOutput.normalizeStructuredOutput(
+      JSON.stringify({
+        summary: 'One non-blocking follow-up remains.',
+        findings: [
+          {
+            severity: 'low',
+            title: 'Marker write path still has one stale branch',
+            file: '.github/workflows/ai-review.yml',
+            line: 181,
+            what: 'One branch still writes the stale marker file path.',
+            why: 'That can make rerun behavior harder to reason about.',
+            fix: 'Keep every publish branch aligned on the PR plus SHA marker.',
+            snippets: [
+              {
+                label: 'Current branch body',
+                language: 'bash',
+                code: 'marker_file="$RUNNER_TEMP/.ai-review-marker"\nprintf "%s\\n" "$REVIEW_MARKER" > "$marker_file"',
+              },
+            ],
+          },
+        ],
+        securityChecklist: [{ check: 'Injection safety', status: 'pass', notes: 'Covered.' }],
+        ccsCompliance: [{ rule: 'Renderer-owned markdown', status: 'pass', notes: 'Covered.' }],
+        informational: [],
+        strengths: [],
+        overallAssessment: 'approved_with_notes',
+        overallRationale: 'The remaining change is formatter polish only.',
+      })
+    );
+
+    expect(validation.ok).toBe(true);
+    const markdown = reviewOutput.renderStructuredReview(validation.value, { model: 'glm-5-turbo' });
+    const html = await marked.parse(markdown);
+
+    expect(html).toContain('<li>Fix: Keep every publish branch aligned on the PR plus SHA marker.</li>');
+    expect(html).toContain('<p>Evidence: Current branch body</p>');
+    expect(html).toContain('<pre><code class="language-bash">');
+    expect(html).not.toContain('Fix: Keep every publish branch aligned on the PR plus SHA marker.\nEvidence:');
   });
 
   test('preserves leading indentation inside literal finding snippets', () => {
@@ -521,6 +563,66 @@ describe('normalize-ai-review-output', () => {
     expect(markdown).toContain('### CCS Compliance (1)');
     expect(markdown).toContain('| Help/docs alignment | N/A | No CLI behavior changed, so there was nothing to update. |');
     expect(markdown).toContain('**✅ APPROVED** — No confirmed regressions or missing verification remain.');
+  });
+
+  test('summarizes overflow findings in top findings when the detail list is longer than the summary limit', () => {
+    const validation = reviewOutput.normalizeStructuredOutput(
+      JSON.stringify({
+        summary: 'Several follow-ups remain.',
+        findings: [
+          {
+            severity: 'high',
+            title: 'High severity finding',
+            file: 'src/high.ts',
+            line: 10,
+            what: 'High severity problem.',
+            why: 'High severity impact.',
+            fix: 'High severity fix.',
+          },
+          {
+            severity: 'medium',
+            title: 'First medium finding',
+            file: 'src/medium-a.ts',
+            line: 20,
+            what: 'Medium severity problem A.',
+            why: 'Medium severity impact A.',
+            fix: 'Medium severity fix A.',
+          },
+          {
+            severity: 'medium',
+            title: 'Second medium finding',
+            file: 'src/medium-b.ts',
+            line: 30,
+            what: 'Medium severity problem B.',
+            why: 'Medium severity impact B.',
+            fix: 'Medium severity fix B.',
+          },
+          {
+            severity: 'low',
+            title: 'Low severity finding',
+            file: 'src/low.ts',
+            line: 40,
+            what: 'Low severity problem.',
+            why: 'Low severity impact.',
+            fix: 'Low severity fix.',
+          },
+        ],
+        securityChecklist: [{ check: 'Injection safety', status: 'pass', notes: 'Covered.' }],
+        ccsCompliance: [{ rule: 'Renderer-owned markdown', status: 'pass', notes: 'Covered.' }],
+        informational: [],
+        strengths: [],
+        overallAssessment: 'changes_requested',
+        overallRationale: 'Multiple findings remain before merge.',
+      })
+    );
+
+    expect(validation.ok).toBe(true);
+    const markdown = reviewOutput.renderStructuredReview(validation.value, { model: 'glm-5-turbo' });
+
+    expect(markdown).toContain('- 🔴 High `src/high.ts:10` — High severity finding');
+    expect(markdown).toContain('- 🟡 Medium `src/medium-a.ts:20` — First medium finding');
+    expect(markdown).toContain('- 🟡 Medium `src/medium-b.ts:30` — Second medium finding');
+    expect(markdown).toContain('- 1 more finding in the details below.');
   });
 
   test('renders findings without line numbers using the file path only', () => {
