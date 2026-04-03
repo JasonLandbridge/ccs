@@ -7,6 +7,9 @@ function __fish_ccs_complete
     end
 
     set -l current (commandline -ct)
+    if test -n "$current"; and test (count $tokens_before_current) -gt 0; and test "$tokens_before_current[-1]" = "$current"
+        set -e tokens_before_current[-1]
+    end
 
     set -l script_file (status filename)
     set -l repo_root (realpath (dirname $script_file)/../.. 2>/dev/null)

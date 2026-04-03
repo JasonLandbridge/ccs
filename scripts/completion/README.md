@@ -137,7 +137,7 @@ $ ccs auth show <TAB>
 work      personal  team      --json
 
 $ ccs api <TAB>
-create    discover  copy      export  import  remove
+create    list      discover  copy    export  import  remove
 ```
 
 ### Backend Contract
