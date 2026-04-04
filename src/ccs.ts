@@ -1,7 +1,6 @@
 import './utils/fetch-proxy-setup';
 
 import * as fs from 'fs';
-import * as path from 'path';
 import { detectClaudeCli } from './utils/claude-detector';
 import {
   getSettingsPath,
@@ -65,10 +64,7 @@ import { tryHandleRootCommand } from './commands/root-command-router';
 // Import extracted utility functions
 import { execClaude } from './utils/shell-executor';
 import { isDeprecatedGlmtProfileName, normalizeDeprecatedGlmtEnv } from './utils/glmt-deprecation';
-import {
-  parseResumeFlagIntent,
-  resolveRuntimePlainCcsResumeLane,
-} from './auth/resume-lane-diagnostics';
+import { maybeWarnAboutResumeLaneMismatch } from './auth/resume-lane-warning';
 
 // Import target adapter system
 import {
@@ -262,43 +258,6 @@ function resolveNativeClaudeLaunchArgs(
 
 function shouldPassthroughNativeCodexFlagCommand(args: string[]): boolean {
   return getNativeCodexPassthroughArgs(args) !== null;
-}
-
-async function maybeWarnAboutResumeLaneMismatch(
-  profileName: string,
-  accountConfigDir: string,
-  args: string[]
-): Promise<void> {
-  const resumeIntent = parseResumeFlagIntent(args);
-  if (!resumeIntent) {
-    return;
-  }
-
-  const plainLane = await resolveRuntimePlainCcsResumeLane();
-  if (path.resolve(plainLane.configDir) === path.resolve(accountConfigDir)) {
-    return;
-  }
-
-  console.error(
-    warn(
-      `Resume for account "${profileName}" will search that account lane, not the current plain ccs lane.`
-    )
-  );
-  console.error(info(`  Account lane: ${accountConfigDir}`));
-  console.error(info(`  Plain ccs lane: ${plainLane.label} (${plainLane.configDir})`));
-  if (resumeIntent.explicitSessionId) {
-    console.error(
-      info(
-        `  This explicit session ID may have been created in a different lane, so Claude may not find it here.`
-      )
-    );
-  }
-  console.error(info(`  Recover the original lane first: ccs -r`));
-  console.error(info(`  Back it up before changing setup: ccs auth backup default`));
-  console.error(
-    info(`  For future work, align plain ccs with this account: ccs auth default ${profileName}`)
-  );
-  console.error('');
 }
 
 function getNativeCodexPassthroughArgs(args: string[]): string[] | null {
