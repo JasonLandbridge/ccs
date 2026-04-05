@@ -5,6 +5,7 @@
 ![CCS Logo](assets/ccs-logo-medium.png)
 
 ### The universal AI profile manager for Claude Code.
+
 Run Claude, Gemini, GLM, and any Anthropic-compatible API - concurrently, without conflicts.
 
 [![License](https://img.shields.io/badge/license-MIT-C15F3C?style=for-the-badge)](LICENSE)
@@ -19,11 +20,11 @@ Run Claude, Gemini, GLM, and any Anthropic-compatible API - concurrently, withou
 
 ## The Three Pillars
 
-| Capability | What It Does | Manage Via |
+| Capability                   | What It Does                                      | Manage Via |
 |------------|--------------|------------|
-| **Multiple Claude Accounts** | Run work + personal Claude subs simultaneously | Dashboard |
-| **OAuth Providers** | Gemini, Codex, Antigravity - zero API keys needed | Dashboard |
-| **API Profiles** | GLM, Kimi, or any Anthropic-compatible API | Dashboard |
+| **Multiple Claude Accounts** | Run work + personal Claude subs simultaneously    | Dashboard  |
+| **OAuth Providers**          | Gemini, Codex, Antigravity - zero API keys needed | Dashboard  |
+| **API Profiles**             | GLM, Kimi, or any Anthropic-compatible API        | Dashboard  |
 
 <br>
 
@@ -117,29 +118,29 @@ The dashboard provides visual management for all account types:
 
 ## Built-in Providers
 
-| Provider | Auth Type | Command | Best For |
+| Provider                | Auth Type           | Command                                       | Best For                                             |
 |----------|-----------|---------|----------|
-| **Claude** | Subscription | `ccs` | Default, strategic planning |
-| **Gemini** | OAuth | `ccs gemini` | Zero-config, fast iteration |
-| **Codex** | OAuth | `ccs codex` | Code generation |
-| **Copilot** | OAuth | `ccs copilot` or `ccs ghcp` | GitHub Copilot models |
-| **Cursor IDE** | Local Token | `ccs cursor` | Cursor subscription models via local daemon |
-| **Kiro** | OAuth (AWS default) | `ccs kiro` | AWS CodeWhisperer (Claude-powered) |
-| **Antigravity** | OAuth | `ccs agy` | Alternative routing |
-| **OpenRouter** | API Key | `ccs openrouter` | 300+ models, unified API |
-| **Ollama** | Local | `ccs ollama` | Local open-source models, privacy |
-| **llama.cpp** | Local | `ccs llamacpp` | Local GGUF inference via llama.cpp server |
-| **Ollama Cloud** | API Key | `ccs ollama-cloud` | Cloud-hosted open-source models |
-| **GLM** | API Key | `ccs glm` | Cost-optimized execution |
-| **KM (Kimi API)** | API Key | `ccs km` | Long-context, thinking mode |
-| **Kimi (OAuth)** | OAuth | `ccs kimi` | Device-code OAuth via CLIProxy |
-| **Azure Foundry** | API Key | `ccs foundry` | Claude via Microsoft Azure |
-| **Minimax** | API Key | `ccs mm` | M2 series, 1M context |
-| **DeepSeek** | API Key | `ccs deepseek` | V3.2 and R1 reasoning |
-| **Novita AI** | API Key | `ccs api create --preset novita` | Anthropic-compatible Novita endpoint for Claude Code |
-| **Qwen (OAuth)** | OAuth | `ccs qwen` | Qwen Code via CLIProxy |
-| **Qwen API** | API Key | `ccs api create --preset qwen` | DashScope Anthropic-compatible API |
-| **Alibaba Coding Plan** | API Key | `ccs api create --preset alibaba-coding-plan` | Model Studio Coding Plan endpoint |
+| **Claude**              | Subscription        | `ccs`                                         | Default, strategic planning                          |
+| **Gemini**              | OAuth               | `ccs gemini`                                  | Zero-config, fast iteration                          |
+| **Codex**               | OAuth               | `ccs codex`                                   | Code generation                                      |
+| **Copilot**             | OAuth               | `ccs copilot` or `ccs ghcp`                   | GitHub Copilot models                                |
+| **Cursor IDE**          | Local Token         | `ccs cursor`                                  | Cursor subscription models via local daemon          |
+| **Kiro**                | OAuth (AWS default) | `ccs kiro`                                    | AWS CodeWhisperer (Claude-powered)                   |
+| **Antigravity**         | OAuth               | `ccs agy`                                     | Alternative routing                                  |
+| **OpenRouter**          | API Key             | `ccs openrouter`                              | 300+ models, unified API                             |
+| **Ollama**              | Local               | `ccs ollama`                                  | Local open-source models, privacy                    |
+| **llama.cpp**           | Local               | `ccs llamacpp`                                | Local GGUF inference via llama.cpp server            |
+| **Ollama Cloud**        | API Key             | `ccs ollama-cloud`                            | Cloud-hosted open-source models                      |
+| **GLM**                 | API Key             | `ccs glm`                                     | Cost-optimized execution                             |
+| **KM (Kimi API)**       | API Key             | `ccs km`                                      | Long-context, thinking mode                          |
+| **Kimi (OAuth)**        | OAuth               | `ccs kimi`                                    | Device-code OAuth via CLIProxy                       |
+| **Azure Foundry**       | API Key             | `ccs foundry`                                 | Claude via Microsoft Azure                           |
+| **Minimax**             | API Key             | `ccs mm`                                      | M2 series, 1M context                                |
+| **DeepSeek**            | API Key             | `ccs deepseek`                                | V3.2 and R1 reasoning                                |
+| **Novita AI**           | API Key             | `ccs api create --preset novita`              | Anthropic-compatible Novita endpoint for Claude Code |
+| **Qwen (OAuth)**        | OAuth               | `ccs qwen`                                    | Qwen Code via CLIProxy                               |
+| **Qwen API**            | API Key             | `ccs api create --preset qwen`                | DashScope Anthropic-compatible API                   |
+| **Alibaba Coding Plan** | API Key             | `ccs api create --preset alibaba-coding-plan` | Model Studio Coding Plan endpoint                    |
 
 **OpenRouter Integration** (v7.0.0): CCS v7.0.0 adds OpenRouter with interactive model picker, dynamic discovery, and tier mapping (opus/sonnet/haiku). Create via `ccs api create --preset openrouter` or dashboard.
 
@@ -158,6 +159,19 @@ The dashboard provides visual management for all account types:
 
 **Azure Foundry**: Use `ccs api create --preset foundry` to set up Claude via Microsoft Azure AI Foundry. Requires Azure resource and API key from [ai.azure.com](https://ai.azure.com).
 
+### OpenCode Plugin Setup:
+
+Use the [`opencode-ccs-sync`](https://github.com/JasonLandbridge/opencode-ccs-sync) plugin to keep OpenCode aligned with your live CCS setup automatically. After you add the plugin and restart OpenCode, it performs an initial sync on startup and automatically re-syncs whenever `~/.ccs/config.yaml` or the live `~/.ccs/*.settings.json` provider files change. The plugin reads the active CCS provider settings, exposes only the providers and models actually selected in those settings files, and writes managed `ccs-*` entries into your OpenCode config.
+
+Example OpenCode config:
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-ccs-sync"],
+}
+```
+
 ![OpenRouter API Profiles](assets/screenshots/api-profiles-openrouter.webp)
 
 > **OAuth providers** authenticate via browser on first run. Tokens are cached in `~/.ccs/cliproxy/auth/`.
@@ -167,6 +181,7 @@ The dashboard provides visual management for all account types:
 > **AI Providers dashboard:** Configure CLIProxy-managed API key families at `ccs config` -> `CLIProxy` -> `AI Providers`. Use `API Profiles` only for CCS-native Anthropic-compatible profiles.
 
 **Powered by:**
+
 - [CLIProxyAPIPlus](https://github.com/router-for-me/CLIProxyAPIPlus) - Extended OAuth proxy with Kiro ([@fuko2935](https://github.com/fuko2935), [@Ravens2121](https://github.com/Ravens2121)) and Copilot ([@em4go](https://github.com/em4go)) support
 - [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) - Core OAuth proxy for Gemini, Codex, Antigravity
 - [copilot-api](https://github.com/ericc-ch/copilot-api) - GitHub Copilot API integration
@@ -274,6 +289,7 @@ ccs codex-api --target codex       # Codex bridge profile on native Codex
 ```
 
 Not supported in v1:
+
 - Claude account profiles on Codex target
 - Copilot profiles on Codex target
 - Generic API profiles that are not Codex-routed CLIProxy bridges
@@ -357,6 +373,7 @@ ccs-droid codex exec --auto high "triage this bug report"
 ```
 
 Dashboard parity:
+
 - `ccs config` -> `API Profiles` -> set **Default Target**
 - `ccs config` -> `CLIProxy` -> create/edit variant -> set **Default Target**
 
@@ -389,11 +406,13 @@ ccs cursor auth --manual --token <token> --machine-id <machine-id>
 ```
 
 Defaults:
+
 - Port: `20129`
 - Ghost mode: enabled
 - Dashboard page: `ccs config` -> `Cursor IDE`
 
 Detailed guide: [`docs/cursor-integration.md`](./docs/cursor-integration.md)
+
 
 ### Claude IDE Extension Setup
 
@@ -430,6 +449,7 @@ CLIProxy and Copilot flows emit the required `ANTHROPIC_*` variables and still d
 proxy/daemon being reachable.
 
 Dashboard parity:
+
 - `ccs config` -> `Claude Extension`
 - Select a CCS profile and IDE host to copy either the shared `~/.claude/settings.json` payload or the IDE-local extension snippet
 
@@ -469,10 +489,10 @@ ccs  "review code"              # Terminal 2 (personal account)
 
 Account profiles are isolated by default.
 
-| Mode | Default | Requirements |
+| Mode       | Default              | Requirements                    |
 |------|---------|--------------|
-| `isolated` | Yes | No `context_group` required |
-| `shared` | No (explicit opt-in) | Valid non-empty `context_group` |
+| `isolated` | Yes                  | No `context_group` required     |
+| `shared`   | No (explicit opt-in) | Valid non-empty `context_group` |
 
 Shared mode continuity depth:
 
@@ -639,22 +659,22 @@ Third-party profiles (Gemini, Codex, GLM, etc.) cannot use Anthropic's native We
 
 ### How It Works
 
-| Profile Type | WebSearch Method |
+| Profile Type         | WebSearch Method                                                               |
 |--------------|------------------|
-| Claude (native) | Anthropic WebSearch API |
+| Claude (native)      | Anthropic WebSearch API                                                        |
 | Third-party profiles | CCS local MCP `WebSearch` tool when available; otherwise Bash/network fallback |
 
 ### Local Search Backend Chain
 
 For third-party profiles, CCS steers Claude toward the managed `ccs-websearch.WebSearch` MCP tool when it is available. The tool is intentionally named to match the native `WebSearch` concept, which helps Claude prefer it over ad hoc Bash or `curl` fetches, but Bash/network fallback can still happen if the tool is unavailable or ignored. When the tool is used, CCS routes that request through deterministic search providers in this order:
 
-| Priority | Provider | Setup | Notes |
+| Priority | Provider                 | Setup            | Notes                                    |
 |----------|----------|-------|-------|
-| 1st | Exa | `EXA_API_KEY` | API-backed search with extracted content |
-| 2nd | Tavily | `TAVILY_API_KEY` | Agent-oriented search API |
-| 3rd | Brave Search | `BRAVE_API_KEY` | Cleaner API-backed results |
-| 4th | DuckDuckGo | None | Built-in default fallback |
-| 5th | Gemini / OpenCode / Grok | Optional | Legacy compatibility fallback only |
+| 1st      | Exa                      | `EXA_API_KEY`    | API-backed search with extracted content |
+| 2nd      | Tavily                   | `TAVILY_API_KEY` | Agent-oriented search API                |
+| 3rd      | Brave Search             | `BRAVE_API_KEY`  | Cleaner API-backed results               |
+| 4th      | DuckDuckGo               | None             | Built-in default fallback                |
+| 5th      | Gemini / OpenCode / Grok | Optional         | Legacy compatibility fallback only       |
 
 ### Configuration
 
@@ -662,18 +682,18 @@ Configure via dashboard (**Settings** page) or `~/.ccs/config.yaml`:
 
 ```yaml
 websearch:
-  enabled: true                    # Enable/disable (default: true)
+  enabled: true # Enable/disable (default: true)
   providers:
     exa:
-      enabled: false               # Enable when EXA_API_KEY is set
+      enabled: false # Enable when EXA_API_KEY is set
     tavily:
-      enabled: false               # Enable when TAVILY_API_KEY is set
+      enabled: false # Enable when TAVILY_API_KEY is set
     duckduckgo:
-      enabled: true                # Built-in zero-setup fallback
+      enabled: true # Built-in zero-setup fallback
     brave:
-      enabled: false               # Enable when BRAVE_API_KEY is set
+      enabled: false # Enable when BRAVE_API_KEY is set
     gemini:
-      enabled: false               # Optional legacy fallback
+      enabled: false # Optional legacy fallback
 ```
 
 > [!TIP]
@@ -690,6 +710,7 @@ See [docs/websearch.md](./docs/websearch.md) for detailed configuration and trou
 ## Remote CLIProxy
 
 CCS v7.x supports connecting to remote CLIProxyAPI instances, enabling:
+
 - **Team sharing**: One CLIProxyAPI server for multiple developers
 - **Cost optimization**: Centralized API key management
 - **Network isolation**: Keep API credentials on a secure server
@@ -705,14 +726,14 @@ ccs codex --proxy-host proxy.example.com --proxy-protocol https
 
 ### CLI Flags
 
-| Flag | Description |
+| Flag                 | Description                                               |
 |------|-------------|
-| `--proxy-host` | Remote proxy hostname or IP |
-| `--proxy-port` | Remote proxy port (default: 8317 for HTTP, 443 for HTTPS) |
-| `--proxy-protocol` | `http` or `https` (default: http) |
-| `--proxy-auth-token` | Bearer token for authentication |
-| `--local-proxy` | Force local mode, ignore remote config |
-| `--remote-only` | Fail if remote unreachable (no fallback) |
+| `--proxy-host`       | Remote proxy hostname or IP                               |
+| `--proxy-port`       | Remote proxy port (default: 8317 for HTTP, 443 for HTTPS) |
+| `--proxy-protocol`   | `http` or `https` (default: http)                         |
+| `--proxy-auth-token` | Bearer token for authentication                           |
+| `--local-proxy`      | Force local mode, ignore remote config                    |
+| `--remote-only`      | Fail if remote unreachable (no fallback)                  |
 
 See [Remote Proxy documentation](https://docs.ccs.kaitran.ca/features/remote-proxy) for detailed setup.
 
@@ -731,6 +752,7 @@ export NO_PROXY=localhost,127.0.0.1,.internal.corp
 ```
 
 Notes:
+
 - CCS automatically bypasses loopback addresses (`localhost`, `127.0.0.1`, `::1`) for its own local services.
 - If `HTTPS_PROXY` is unset, CCS falls back to `HTTP_PROXY` for HTTPS fetches.
 - `ALL_PROXY` is used when protocol-specific proxy variables are not configured.
@@ -743,20 +765,20 @@ Notes:
 If you are not sure where to start, open **https://docs.ccs.kaitran.ca** first.
 The hosted docs are the best entry point for setup, command reference, provider guides, and troubleshooting.
 
-| Topic | Link |
+| Topic                        | Link                                                                                                           |
 |-------|------|
-| Docs Home | [docs.ccs.kaitran.ca](https://docs.ccs.kaitran.ca) |
-| Installation | [docs.ccs.kaitran.ca/getting-started/installation](https://docs.ccs.kaitran.ca/getting-started/installation) |
-| Configuration | [docs.ccs.kaitran.ca/getting-started/configuration](https://docs.ccs.kaitran.ca/getting-started/configuration) |
-| OAuth Providers | [docs.ccs.kaitran.ca/providers/oauth-providers](https://docs.ccs.kaitran.ca/providers/oauth-providers) |
-| Multi-Account Claude | [docs.ccs.kaitran.ca/providers/claude-accounts](https://docs.ccs.kaitran.ca/providers/claude-accounts) |
-| API Profiles | [docs.ccs.kaitran.ca/providers/api-profiles](https://docs.ccs.kaitran.ca/providers/api-profiles) |
-| Remote Proxy | [docs.ccs.kaitran.ca/features/remote-proxy](https://docs.ccs.kaitran.ca/features/remote-proxy) |
-| Cursor IDE (local guide) | [./docs/cursor-integration.md](./docs/cursor-integration.md) |
-| Dashboard i18n (local guide) | [./docs/i18n-dashboard.md](./docs/i18n-dashboard.md) |
-| CLI Reference | [docs.ccs.kaitran.ca/reference/cli-commands](https://docs.ccs.kaitran.ca/reference/cli-commands) |
-| Architecture | [docs.ccs.kaitran.ca/reference/architecture](https://docs.ccs.kaitran.ca/reference/architecture) |
-| Troubleshooting | [docs.ccs.kaitran.ca/reference/troubleshooting](https://docs.ccs.kaitran.ca/reference/troubleshooting) |
+| Docs Home                    | [docs.ccs.kaitran.ca](https://docs.ccs.kaitran.ca)                                                             |
+| Installation                 | [docs.ccs.kaitran.ca/getting-started/installation](https://docs.ccs.kaitran.ca/getting-started/installation)   |
+| Configuration                | [docs.ccs.kaitran.ca/getting-started/configuration](https://docs.ccs.kaitran.ca/getting-started/configuration) |
+| OAuth Providers              | [docs.ccs.kaitran.ca/providers/oauth-providers](https://docs.ccs.kaitran.ca/providers/oauth-providers)         |
+| Multi-Account Claude         | [docs.ccs.kaitran.ca/providers/claude-accounts](https://docs.ccs.kaitran.ca/providers/claude-accounts)         |
+| API Profiles                 | [docs.ccs.kaitran.ca/providers/api-profiles](https://docs.ccs.kaitran.ca/providers/api-profiles)               |
+| Remote Proxy                 | [docs.ccs.kaitran.ca/features/remote-proxy](https://docs.ccs.kaitran.ca/features/remote-proxy)                 |
+| Cursor IDE (local guide)     | [./docs/cursor-integration.md](./docs/cursor-integration.md)                                                   |
+| Dashboard i18n (local guide) | [./docs/i18n-dashboard.md](./docs/i18n-dashboard.md)                                                           |
+| CLI Reference                | [docs.ccs.kaitran.ca/reference/cli-commands](https://docs.ccs.kaitran.ca/reference/cli-commands)               |
+| Architecture                 | [docs.ccs.kaitran.ca/reference/architecture](https://docs.ccs.kaitran.ca/reference/architecture)               |
+| Troubleshooting              | [docs.ccs.kaitran.ca/reference/troubleshooting](https://docs.ccs.kaitran.ca/reference/troubleshooting)         |
 
 <br>
 
