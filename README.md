@@ -405,6 +405,19 @@ Defaults:
 
 Detailed guide: [`docs/cursor-integration.md`](./docs/cursor-integration.md)
 
+### OpenCode Plugin Setup:
+
+Use the [`opencode-ccs-sync`](https://github.com/JasonLandbridge/opencode-ccs-sync) plugin to keep OpenCode aligned with your live CCS setup automatically. After you add the plugin and restart OpenCode, it performs an initial sync on startup and automatically re-syncs whenever `~/.ccs/config.yaml` or the live `~/.ccs/*.settings.json` provider files change. The plugin reads the active CCS provider settings, exposes only the providers and models actually selected in those settings files, and writes managed `ccs-*` entries into your OpenCode config.
+
+Example OpenCode config:
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-ccs-sync"],
+}
+```
+
 ### Claude IDE Extension Setup
 
 CCS now has a native setup flow for the Anthropic Claude extension in VS Code and compatible hosts.
